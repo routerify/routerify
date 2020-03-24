@@ -10,10 +10,6 @@
 
    }
 
-   async fn ws_handler(upgraded: Upgraded) -> neo::Result<()> {
-      
-   }
-
    async fn middleware1(req: Request<Body>) -> neo::Result<Request<Body>> {
 
    }
@@ -30,7 +26,6 @@
    .get("/", handler1)
    .add("/payments", vec![GET, POST], handler2)
    .router("/api", &static other_router)
-   .upgrade("/ws", ws_handler)
    .all(handle_all);
 
    let res = router.process(req);

@@ -1,8 +1,7 @@
 use crate::prelude::*;
 use crate::router::Router;
-use crate::{PathParams, RequestData};
+use crate::types::{PathParams, RequestData};
 use futures::future::{BoxFuture, FutureExt};
-use hyper::upgrade::Upgraded;
 use hyper::{Body, Method, Request, Response};
 use regex::Regex;
 use std::future::Future;
@@ -12,8 +11,6 @@ mod regex_generator;
 
 type BoxedNormalRouteHandler = Box<dyn Fn(Request<Body>) -> BoxedNormalRouteResponse + Send + Sync + 'static>;
 type BoxedNormalRouteResponse = Box<dyn Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static>;
-type BoxedWsRouteHandler = Box<dyn Fn(Upgraded, RequestData) -> BoxedWsRouteResponse + Send + Sync + 'static>;
-type BoxedWsRouteResponse = Box<dyn Future<Output = crate::Result<()>> + Send + Sync + 'static>;
 
 pub struct Route {
   path: String,
@@ -25,7 +22,6 @@ pub struct Route {
 enum Inner {
   Normal(Vec<Method>, BoxedNormalRouteHandler),
   Router(&'static Router),
-  WS(BoxedWsRouteHandler),
 }
 
 impl Route {
@@ -63,25 +59,6 @@ impl Route {
     })
   }
 
-  pub fn with_ws<P, H, R>(path: P, handler: H) -> crate::Result<Route>
-  where
-    P: Into<String>,
-    H: Fn(Upgraded, RequestData) -> R + Send + Sync + 'static,
-    R: Future<Output = crate::Result<()>> + Send + Sync + 'static,
-  {
-    let path = path.into();
-    let (re, params) = Self::gen_exact_match_regex(path.as_str())?;
-
-    let handler: BoxedWsRouteHandler =
-      Box::new(move |upgraded: Upgraded, req_data: RequestData| Box::new(handler(upgraded, req_data)));
-    Ok(Route {
-      path,
-      regex: re,
-      path_params: params,
-      inner: Inner::WS(handler),
-    })
-  }
-
   fn gen_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     regex_generator::generate_exact_match_regex(path)
       .context("Could not create an exact match regex for the route path")
@@ -102,7 +79,6 @@ impl Route {
         }
       }
       Inner::Router(_) => self.regex.is_match(target_path),
-      Inner::WS(_) => self.regex.is_match(target_path),
     }
   }
 
@@ -114,7 +90,6 @@ impl Route {
     match self.inner {
       Inner::Normal(_, ref handler) => self.process_normal_route(target_path, req, handler).await,
       Inner::Router(router) => self.process_router_route(target_path, req, router).await,
-      Inner::WS(ref handler) => self.process_ws_route(target_path, req, handler).await,
     }
   }
 
@@ -137,16 +112,6 @@ impl Route {
     self.push_req_data(target_path, &mut req);
     let target_path: String = self.regex.replace(target_path, "").into();
     async move { router.process(target_path.as_str(), req).await }.boxed()
-  }
-
-  async fn process_ws_route(
-    &self,
-    target_path: &str,
-    _req: Request<Body>,
-    _handler: &BoxedWsRouteHandler,
-  ) -> crate::Result<Response<Body>> {
-    let _req_data = self.generate_req_data(target_path);
-    todo!("Websocket support is not yet added");
   }
 
   fn push_req_data(&self, target_path: &str, req: &mut Request<Body>) {

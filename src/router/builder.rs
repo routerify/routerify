@@ -1,8 +1,6 @@
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
-use crate::types::RequestData;
-use hyper::upgrade::Upgraded;
 use hyper::{Body, Method, Request, Response};
 use std::future::Future;
 
@@ -22,11 +20,14 @@ impl Builder {
   }
 
   pub fn build(self) -> crate::Result<Router> {
-    self.inner.map(|inner| Router {
-      pre_middlewares: inner.pre_middlewares,
-      routes: inner.routes,
-      post_middlewares: inner.post_middlewares,
-    })
+    self
+      .all(crate::handlers::default_404_handler)
+      .inner
+      .map(|inner| Router {
+        pre_middlewares: inner.pre_middlewares,
+        routes: inner.routes,
+        post_middlewares: inner.post_middlewares,
+      })
   }
 
   fn and_then<F>(self, func: F) -> Self
@@ -148,19 +149,6 @@ impl Builder {
   {
     self.and_then(move |mut inner| {
       let route = Route::with_router(path, router)?;
-      inner.routes.push(route);
-      crate::Result::Ok(inner)
-    })
-  }
-
-  pub fn upgrade<P, H, R>(self, path: P, handler: H) -> Self
-  where
-    P: Into<String>,
-    H: Fn(Upgraded, RequestData) -> R + Send + Sync + 'static,
-    R: Future<Output = crate::Result<()>> + Send + Sync + 'static,
-  {
-    self.and_then(move |mut inner| {
-      let route = Route::with_ws(path, handler)?;
       inner.routes.push(route);
       crate::Result::Ok(inner)
     })

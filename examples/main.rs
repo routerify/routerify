@@ -14,7 +14,7 @@ lazy_static! {
     // .middleware(Middleware::post(post_middleware))
     // .get("/users/:username/view/:attr", handle_api_users)
     .get("/users/:username/", handle_api_users)
-    .all(|req| async { Ok(Response::new(Body::from("Hey2"))) })
+    // .all(|req| async { Ok(Response::new(Body::from("Hey2"))) })
     .build()
     .unwrap();
 }
@@ -27,7 +27,7 @@ lazy_static! {
     // .add("/", vec![Method::GET, Method::POST, Method::HEAD], handle_home)
     .get("/about", handle_about)
     .router("/api", &*API_ROUTER)
-    .all(|req| async { Ok(Response::new(Body::from("Hey"))) })
+    // .all(|req| async { Ok(Response::new(Body::from("Hey"))) })
     .build()
     .unwrap();
 }

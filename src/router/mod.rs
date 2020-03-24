@@ -1,7 +1,7 @@
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::prelude::*;
 use crate::route::Route;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{header, Body, Request, Response, StatusCode};
 
 pub use self::builder::Builder as RouterBuilder;
 
@@ -48,12 +48,7 @@ impl Router {
     }
 
     if let None = resp {
-      return Ok(
-        Response::builder()
-          .status(StatusCode::NOT_FOUND)
-          .body(Body::empty())
-          .unwrap(),
-      );
+      return Ok(self.extreme_404_handler().await);
     }
 
     let mut transformed_res = resp.unwrap();
@@ -65,5 +60,13 @@ impl Router {
     }
 
     Ok(transformed_res)
+  }
+
+  async fn extreme_404_handler(&self) -> Response<Body> {
+    Response::builder()
+      .status(StatusCode::NOT_FOUND)
+      .header(header::CONTENT_TYPE, "text/plain")
+      .body(Body::from(StatusCode::NOT_FOUND.canonical_reason().unwrap()))
+      .expect("Couldn't create the extreme 404 response")
   }
 }

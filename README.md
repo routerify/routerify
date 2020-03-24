@@ -1,6 +1,6 @@
 # Routerify
 
-A lightweight router implementation with middleware support for rust HTTP library hyper.
+A lightweight router implementation with middleware support for the rust HTTP library [hyper](https://hyper.rs/).
 
 ## Usage
 
