@@ -8,7 +8,8 @@ where
   H: Fn(crate::Error) -> R + Send + Sync + 'static,
   R: Future<Output = Response<Body>> + Send + Sync + 'static,
 {
-  let resp = router.process(req.uri().path(), req).await;
+  let target_path = String::from(req.uri().path());
+  let resp = router.process(target_path.as_str(), req).await;
 
   match resp {
     Ok(resp) => resp,
