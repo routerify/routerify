@@ -1,7 +1,9 @@
 extern crate routerify;
+use http::HeaderValue;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, Method, Request, Response, Server};
 use lazy_static::lazy_static;
+use routerify::prelude::*;
 use routerify::{Middleware, Router};
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -9,7 +11,10 @@ use std::net::SocketAddr;
 lazy_static! {
   static ref API_ROUTER: Router = Router::builder()
     .middleware(Middleware::pre(middleware_logger))
-    .get("/users/:username/view", handle_api_users)
+    // .middleware(Middleware::post(post_middleware))
+    // .get("/users/:username/view/:attr", handle_api_users)
+    .get("/users/:username/", handle_api_users)
+    .all(|req| async { Ok(Response::new(Body::from("Hey2"))) })
     .build()
     .unwrap();
 }
@@ -17,23 +22,40 @@ lazy_static! {
 lazy_static! {
   static ref ROUTER: Router = Router::builder()
     .middleware(Middleware::pre(middleware_logger))
-    .get("/", handle_home)
+    .middleware(Middleware::post(post_middleware))
+    .get_or_head("/", handle_home)
+    // .add("/", vec![Method::GET, Method::POST, Method::HEAD], handle_home)
     .get("/about", handle_about)
     .router("/api", &*API_ROUTER)
+    .all(|req| async { Ok(Response::new(Body::from("Hey"))) })
     .build()
     .unwrap();
 }
 
-async fn handle_api_users(_req: Request<Body>) -> routerify::Result<Response<Body>> {
+async fn handle_api_users(req: Request<Body>) -> routerify::Result<Response<Body>> {
+  let val = req.extensions().get::<String>();
+  println!("{:?}", val);
+
+  let params = req.params().unwrap();
+  println!("{:?}", params);
   Ok(Response::new(Body::from("Fetch an user data")))
 }
 
-async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {
-  println!("Visited: {} {}", req.method(), req.uri());
+async fn middleware_logger(mut req: Request<Body>) -> routerify::Result<Request<Body>> {
+  req.extensions_mut().insert(String::from("abc"));
+  // println!("Visited: {} {}", req.method(), req.uri());
   Ok(req)
 }
 
-async fn handle_home(_req: Request<Body>) -> routerify::Result<Response<Body>> {
+async fn post_middleware(mut res: Response<Body>) -> routerify::Result<Response<Body>> {
+  res.headers_mut().append("X-ROUTERIFY", HeaderValue::from_static("NEO"));
+  Ok(res)
+}
+
+async fn handle_home(req: Request<Body>) -> routerify::Result<Response<Body>> {
+  // let val = req.extensions().get::<String>();
+  // println!("{:?}", val);
+
   Ok(Response::new(Body::from("Hello Home")))
 }
 

@@ -61,7 +61,7 @@ impl Router {
       transformed_res = post_middleware
         .process(transformed_res)
         .await
-        .context("One of the post middlewares couldn't process the request")?;
+        .context("One of the post middlewares couldn't process the response")?;
     }
 
     Ok(transformed_res)

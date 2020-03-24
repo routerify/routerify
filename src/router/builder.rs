@@ -1,6 +1,7 @@
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
+use crate::types::RequestData;
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Method, Request, Response};
 use std::future::Future;
@@ -45,7 +46,16 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::GET, handler)
+    self.add(path, vec![Method::GET], handler)
+  }
+
+  pub fn get_or_head<P, H, R>(self, path: P, handler: H) -> Self
+  where
+    P: Into<String>,
+    H: Fn(Request<Body>) -> R + Send + Sync + 'static,
+    R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+  {
+    self.add(path, vec![Method::GET, Method::HEAD], handler)
   }
 
   pub fn post<P, H, R>(self, path: P, handler: H) -> Self
@@ -54,7 +64,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::POST, handler)
+    self.add(path, vec![Method::POST], handler)
   }
 
   pub fn put<P, H, R>(self, path: P, handler: H) -> Self
@@ -63,7 +73,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::PUT, handler)
+    self.add(path, vec![Method::PUT], handler)
   }
 
   pub fn delete<P, H, R>(self, path: P, handler: H) -> Self
@@ -72,7 +82,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::DELETE, handler)
+    self.add(path, vec![Method::DELETE], handler)
   }
 
   pub fn head<P, H, R>(self, path: P, handler: H) -> Self
@@ -81,7 +91,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::HEAD, handler)
+    self.add(path, vec![Method::HEAD], handler)
   }
 
   pub fn trace<P, H, R>(self, path: P, handler: H) -> Self
@@ -90,7 +100,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::TRACE, handler)
+    self.add(path, vec![Method::TRACE], handler)
   }
 
   pub fn connect<P, H, R>(self, path: P, handler: H) -> Self
@@ -99,7 +109,7 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::CONNECT, handler)
+    self.add(path, vec![Method::CONNECT], handler)
   }
 
   pub fn patch<P, H, R>(self, path: P, handler: H) -> Self
@@ -108,17 +118,25 @@ impl Builder {
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
-    self.push_method_route(path, Method::PATCH, handler)
+    self.add(path, vec![Method::PATCH], handler)
   }
 
-  fn push_method_route<P, H, R>(self, path: P, method: Method, handler: H) -> Self
+  pub fn all<H, R>(self, handler: H) -> Self
+  where
+    H: Fn(Request<Body>) -> R + Send + Sync + 'static,
+    R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+  {
+    self.add("*", Vec::new(), handler)
+  }
+
+  pub fn add<P, H, R>(self, path: P, methods: Vec<Method>, handler: H) -> Self
   where
     P: Into<String>,
     H: Fn(Request<Body>) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
     self.and_then(move |mut inner| {
-      let route = Route::from_route_handler(path, method, handler)?;
+      let route = Route::with_normal(path, methods, handler)?;
       inner.routes.push(route);
       crate::Result::Ok(inner)
     })
@@ -129,7 +147,7 @@ impl Builder {
     P: Into<String>,
   {
     self.and_then(move |mut inner| {
-      let route = Route::from_router_handler(path, router)?;
+      let route = Route::with_router(path, router)?;
       inner.routes.push(route);
       crate::Result::Ok(inner)
     })
@@ -138,11 +156,11 @@ impl Builder {
   pub fn upgrade<P, H, R>(self, path: P, handler: H) -> Self
   where
     P: Into<String>,
-    H: Fn(Upgraded) -> R + Send + Sync + 'static,
+    H: Fn(Upgraded, RequestData) -> R + Send + Sync + 'static,
     R: Future<Output = crate::Result<()>> + Send + Sync + 'static,
   {
     self.and_then(move |mut inner| {
-      let route = Route::from_ws_handler(path, handler)?;
+      let route = Route::with_ws(path, handler)?;
       inner.routes.push(route);
       crate::Result::Ok(inner)
     })
