@@ -19,7 +19,7 @@ fn generate_common_regex_str(path: &str) -> crate::Result<(String, Vec<String>)>
     regex_str += &regex::escape(path_s);
 
     if whole.as_str() == "*" {
-      regex_str += r"(.+)";
+      regex_str += r"(.*)";
       param_names.push("*".to_owned());
     } else {
       regex_str += r"([^/]+)";

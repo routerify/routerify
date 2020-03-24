@@ -3,6 +3,7 @@ use crate::router::Router;
 use crate::types::{PathParams, RequestData};
 use futures::future::{BoxFuture, FutureExt};
 use hyper::{Body, Method, Request, Response};
+use regex::Captures;
 use regex::Regex;
 use std::future::Future;
 use std::pin::Pin;
@@ -110,7 +111,16 @@ impl Route {
     router: &'static Router,
   ) -> BoxFuture<'static, crate::Result<Response<Body>>> {
     self.push_req_data(target_path, &mut req);
-    let target_path: String = self.regex.replace(target_path, "").into();
+    let target_path: String = self
+      .regex
+      .replace(target_path, |caps: &Captures| {
+        if caps[0].ends_with("/") {
+          "/".to_owned()
+        } else {
+          "".to_owned()
+        }
+      })
+      .into();
     async move { router.process(target_path.as_str(), req).await }.boxed()
   }
 
