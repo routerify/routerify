@@ -1,6 +1,7 @@
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
+use crate::utility::handlers;
 use hyper::{Body, Method, Request, Response};
 use std::future::Future;
 
@@ -20,14 +21,11 @@ impl Builder {
   }
 
   pub fn build(self) -> crate::Result<Router> {
-    self
-      .all(crate::handlers::default_404_handler)
-      .inner
-      .map(|inner| Router {
-        pre_middlewares: inner.pre_middlewares,
-        routes: inner.routes,
-        post_middlewares: inner.post_middlewares,
-      })
+    self.all(handlers::default_404_handler).inner.map(|inner| Router {
+      pre_middlewares: inner.pre_middlewares,
+      routes: inner.routes,
+      post_middlewares: inner.post_middlewares,
+    })
   }
 
   fn and_then<F>(self, func: F) -> Self
