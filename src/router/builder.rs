@@ -21,11 +21,15 @@ impl Builder {
   }
 
   pub fn build(self) -> crate::Result<Router> {
-    self.all(handlers::default_404_handler).inner.map(|inner| Router {
-      pre_middlewares: inner.pre_middlewares,
-      routes: inner.routes,
-      post_middlewares: inner.post_middlewares,
-    })
+    self
+      .options("*", handlers::default_options_handler)
+      .all(handlers::default_404_handler)
+      .inner
+      .map(|inner| Router {
+        pre_middlewares: inner.pre_middlewares,
+        routes: inner.routes,
+        post_middlewares: inner.post_middlewares,
+      })
   }
 
   fn and_then<F>(self, func: F) -> Self
@@ -118,6 +122,15 @@ impl Builder {
     R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
   {
     self.add(path, vec![Method::PATCH], handler)
+  }
+
+  pub fn options<P, H, R>(self, path: P, handler: H) -> Self
+  where
+    P: Into<String>,
+    H: Fn(Request<Body>) -> R + Send + Sync + 'static,
+    R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+  {
+    self.add(path, vec![Method::OPTIONS], handler)
   }
 
   pub fn all<H, R>(self, handler: H) -> Self

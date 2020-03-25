@@ -1,9 +1,7 @@
 extern crate routerify;
-use http::HeaderValue;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use lazy_static::lazy_static;
-use routerify::prelude::*;
 use routerify::utility::middlewares;
 use routerify::{Middleware, Router};
 use std::convert::Infallible;
@@ -13,20 +11,21 @@ lazy_static! {
   static ref ROUTER: Router = Router::builder()
     .middleware(middlewares::query_parser())
     .middleware(Middleware::pre(middleware_logger))
-    .middleware(Middleware::post(post_middleware))
+    .middleware(routerify::utility::middlewares::cors_enable_all())
     .get_or_head("/", handle_home)
+    .post("/api", handle_api)
     .build()
     .unwrap();
 }
 
-async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {
-  println!("{} {}", req.method(), req.uri());
-  Ok(req)
+async fn handle_api(_: Request<Body>) -> routerify::Result<Response<Body>> {
+  Ok(Response::new(Body::from("Hello Home")))
 }
 
-async fn post_middleware(mut res: Response<Body>) -> routerify::Result<Response<Body>> {
-  res.headers_mut().append("X-ROUTERIFY", HeaderValue::from_static("NEO"));
-  Ok(res)
+async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {
+  println!("New: {} {}", req.method(), req.uri());
+  println!("{:?}", req.headers());
+  Ok(req)
 }
 
 async fn handle_home(_: Request<Body>) -> routerify::Result<Response<Body>> {
