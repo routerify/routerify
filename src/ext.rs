@@ -1,8 +1,10 @@
 use crate::types::{PathParams, RequestData};
+use crate::utility::middlewares::Query;
 use hyper::{Body, Request};
 
 pub trait RequestExt {
   fn params(&self) -> Option<&PathParams>;
+  fn query(&self) -> Option<&Query>;
 }
 
 impl RequestExt for Request<Body> {
@@ -14,5 +16,9 @@ impl RequestExt for Request<Body> {
     } else {
       None
     }
+  }
+
+  fn query(&self) -> Option<&Query> {
+    self.extensions().get::<Query>()
   }
 }

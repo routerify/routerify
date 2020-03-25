@@ -15,7 +15,7 @@
    }
 
    async fn middleware2(res: Response<Body>) -> neo::Result<Response<Body>> {
-
+      
    }
    
    let router = Router::builder()
