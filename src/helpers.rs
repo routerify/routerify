@@ -6,7 +6,7 @@ use hyper::{Body, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
 
-pub async fn handle_request_err<H, R>(
+pub async fn handle_request_with_err<H, R>(
   router: &'static Router,
   mut req: Request<Body>,
   remote_addr: Option<SocketAddr>,
@@ -34,7 +34,7 @@ pub async fn handle_request(
   req: Request<Body>,
   remote_addr: Option<SocketAddr>,
 ) -> Response<Body> {
-  handle_request_err(router, req, remote_addr, handlers::default_error_handler).await
+  handle_request_with_err(router, req, remote_addr, handlers::default_error_handler).await
 }
 
 pub(crate) fn update_req_data_in_extensions(ext: &mut Extensions, new_req_data: RequestData) {
