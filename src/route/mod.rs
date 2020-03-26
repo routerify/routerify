@@ -1,3 +1,4 @@
+use crate::helpers;
 use crate::prelude::*;
 use crate::router::Router;
 use crate::types::{PathParams, RequestData};
@@ -129,13 +130,7 @@ impl Route {
   }
 
   fn update_req_data(&self, req: &mut Request<Body>, req_data: RequestData) {
-    let ext = req.extensions_mut();
-
-    if let Some(existing_req_data) = ext.get_mut::<RequestData>() {
-      existing_req_data.extend(req_data)
-    } else {
-      ext.insert(req_data);
-    }
+    helpers::update_req_data_in_extensions(req.extensions_mut(), req_data);
   }
 
   fn generate_req_data(&self, target_path: &str) -> RequestData {
@@ -154,6 +149,6 @@ impl Route {
       }
     }
 
-    RequestData::new(path_params)
+    RequestData::with_path_params(path_params)
   }
 }
