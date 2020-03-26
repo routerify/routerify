@@ -2,7 +2,7 @@ use crate::Middleware;
 use hyper::{Body, Request};
 use std::collections::HashMap;
 use std::ops::Deref;
-use url::Url;
+use url::form_urlencoded;
 
 #[derive(Debug, Clone)]
 pub struct Query(HashMap<String, String>);
@@ -22,10 +22,8 @@ pub fn query_parser() -> Middleware {
 async fn query_parser_middleware_handler(mut req: Request<Body>) -> crate::Result<Request<Body>> {
   let mut q = Query(HashMap::new());
 
-  if let Some(path_and_query) = req.uri().path_and_query() {
-    if let Ok(url) = format!("routerify:{}", path_and_query).parse::<Url>() {
-      q = Query(url.query_pairs().into_owned().collect());
-    }
+  if let Some(query_str) = req.uri().query() {
+    q = Query(form_urlencoded::parse(query_str.as_bytes()).into_owned().collect());
   }
 
   req.extensions_mut().insert(q);
