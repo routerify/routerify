@@ -46,7 +46,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::GET], handler)
     }
@@ -55,7 +55,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::GET, Method::HEAD], handler)
     }
@@ -64,7 +64,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::POST], handler)
     }
@@ -73,7 +73,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::PUT], handler)
     }
@@ -82,7 +82,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::DELETE], handler)
     }
@@ -91,7 +91,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::HEAD], handler)
     }
@@ -100,7 +100,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::TRACE], handler)
     }
@@ -109,7 +109,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::CONNECT], handler)
     }
@@ -118,7 +118,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::PATCH], handler)
     }
@@ -127,7 +127,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add(path, vec![Method::OPTIONS], handler)
     }
@@ -135,7 +135,7 @@ impl Builder {
     pub fn all<H, R>(self, handler: H) -> Self
     where
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.add("*", Vec::new(), handler)
     }
@@ -144,7 +144,7 @@ impl Builder {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         self.and_then(move |mut inner| {
             let route = Route::with_normal(path, methods, handler)?;

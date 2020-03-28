@@ -14,7 +14,7 @@ pub async fn handle_request_with_err<H, R>(
 ) -> Response<Body>
 where
     H: Fn(crate::Error) -> R + Send + Sync + 'static,
-    R: Future<Output = Response<Body>> + Send + Sync + 'static,
+    R: Future<Output = Response<Body>> + Send + 'static,
 {
     if let Some(remote_addr) = remote_addr {
         update_req_data_in_extensions(req.extensions_mut(), RequestData::with_remote_addr(remote_addr));

@@ -12,7 +12,7 @@ use std::pin::Pin;
 mod regex_generator;
 
 type BoxedNormalRouteHandler = Box<dyn Fn(Request<Body>) -> BoxedNormalRouteResponse + Send + Sync + 'static>;
-type BoxedNormalRouteResponse = Box<dyn Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static>;
+type BoxedNormalRouteResponse = Box<dyn Future<Output = crate::Result<Response<Body>>> + Send + 'static>;
 
 pub struct Route {
     path: String,
@@ -31,7 +31,7 @@ impl Route {
     where
         P: Into<String>,
         H: Fn(Request<Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = crate::Result<Response<Body>>> + Send + Sync + 'static,
+        R: Future<Output = crate::Result<Response<Body>>> + Send + 'static,
     {
         let path = path.into();
         let (re, params) = Route::gen_exact_match_regex(path.as_str())?;
