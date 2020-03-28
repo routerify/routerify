@@ -21,11 +21,7 @@ lazy_static! {
 }
 
 async fn handle_api(_req: Request<Body>) -> routerify::Result<Response<Body>> {
-    JsonResponse::with_error(
-        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-        "Something went wrong".to_owned(),
-    )
-    .into_response()
+    JsonResponse::with_error_code(hyper::StatusCode::INTERNAL_SERVER_ERROR).into_response()
     // JsonResponse::with_success(hyper::StatusCode::OK,  "").into_response()
     // Ok(Response::new(Body::from("Hello Home")))
 }

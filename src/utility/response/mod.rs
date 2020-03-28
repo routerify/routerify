@@ -47,6 +47,10 @@ impl JsonResponse<()> {
             }),
         }
     }
+
+    pub fn with_error_code(code: StatusCode) -> Self {
+        Self::with_error(code, code.canonical_reason().unwrap().to_owned())
+    }
 }
 
 impl<T: Serialize> JsonResponse<T> {
