@@ -4,6 +4,7 @@ use hyper::{Body, Request, Response, Server};
 use lazy_static::lazy_static;
 use routerify::prelude::*;
 use routerify::utility::middlewares;
+use routerify::utility::JsonResponse;
 use routerify::{Middleware, Router};
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -20,7 +21,13 @@ lazy_static! {
 }
 
 async fn handle_api(_req: Request<Body>) -> routerify::Result<Response<Body>> {
-    Ok(Response::new(Body::from("Hello Home")))
+    JsonResponse::with_error(
+        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+        "Something went wrong".to_owned(),
+    )
+    .into_response()
+    // JsonResponse::with_success(hyper::StatusCode::OK,  "").into_response()
+    // Ok(Response::new(Body::from("Hello Home")))
 }
 
 async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {

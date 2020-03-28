@@ -36,7 +36,9 @@ impl<T: Serialize> JsonResponse<T> {
             }),
         }
     }
+}
 
+impl JsonResponse<()> {
     pub fn with_error(code: StatusCode, message: String) -> Self {
         JsonResponse {
             inner: Inner::Error(ErrorData {
@@ -45,7 +47,9 @@ impl<T: Serialize> JsonResponse<T> {
             }),
         }
     }
+}
 
+impl<T: Serialize> JsonResponse<T> {
     pub fn into_response(self) -> crate::Result<Response<Body>> {
         let code;
         let body;
