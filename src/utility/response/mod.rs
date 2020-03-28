@@ -15,7 +15,10 @@ enum Inner<T> {
     Error(ErrorData),
 }
 
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 struct SuccessData<T> {
+    status: Status,
     code: u16,
     data: T,
 }
@@ -23,14 +26,24 @@ struct SuccessData<T> {
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ErrorData {
+    status: Status,
     code: u16,
     message: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
+enum Status {
+    #[serde(rename = "Success")]
+    SUCCESS,
+    #[serde(rename = "Failed")]
+    FAILED,
 }
 
 impl<T: Serialize> JsonResponse<T> {
     pub fn with_success(code: StatusCode, data: T) -> Self {
         JsonResponse {
             inner: Inner::Success(SuccessData {
+                status: Status::SUCCESS,
                 code: code.as_u16(),
                 data,
             }),
@@ -39,11 +52,12 @@ impl<T: Serialize> JsonResponse<T> {
 }
 
 impl JsonResponse<()> {
-    pub fn with_error(code: StatusCode, message: String) -> Self {
+    pub fn with_error<M: Into<String>>(code: StatusCode, message: M) -> Self {
         JsonResponse {
             inner: Inner::Error(ErrorData {
+                status: Status::FAILED,
                 code: code.as_u16(),
-                message,
+                message: message.into(),
             }),
         }
     }
@@ -62,7 +76,7 @@ impl<T: Serialize> JsonResponse<T> {
             Inner::Success(success_data) => {
                 code = success_data.code;
                 body = Body::from(
-                    serde_json::to_vec(&success_data.data)
+                    serde_json::to_vec(&success_data)
                         .context("JsonResponse: Failed to convert success data to JSON")?,
                 );
             }
