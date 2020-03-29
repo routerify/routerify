@@ -62,6 +62,13 @@ impl JsonResponse<()> {
         }
     }
 
+    pub fn with_error_include_code<M: Into<String>>(code: StatusCode, message: M) -> Self {
+        Self::with_error(
+            code,
+            format!("{}: {}", code.canonical_reason().unwrap(), message.into()),
+        )
+    }
+
     pub fn with_error_code(code: StatusCode) -> Self {
         Self::with_error(code, code.canonical_reason().unwrap().to_owned())
     }
