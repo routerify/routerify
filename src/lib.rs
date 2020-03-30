@@ -5,6 +5,7 @@ pub use self::middleware::{Middleware, PostMiddleware, PreMiddleware};
 pub use self::route::Route;
 pub use self::router::{Router, RouterBuilder};
 
+pub mod body;
 mod error;
 pub mod ext;
 mod helpers;
