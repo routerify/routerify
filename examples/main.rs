@@ -1,6 +1,6 @@
 extern crate routerify;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server};
+use hyper::{header, Body, Request, Response, Server};
 use lazy_static::lazy_static;
 use routerify::prelude::*;
 use routerify::utility::middlewares;
@@ -11,6 +11,11 @@ use std::net::SocketAddr;
 
 lazy_static! {
     static ref ROUTER: Router = Router::builder()
+        .middleware(Middleware::post(|mut res| async {
+            res.headers_mut()
+                .insert(header::CONNECTION, header::HeaderValue::from_static("keep-alive"));
+            Ok(res)
+        }))
         .middleware(middlewares::query_parser())
         .middleware(Middleware::pre(middleware_logger))
         .middleware(routerify::utility::middlewares::cors_enable_all())
@@ -51,7 +56,7 @@ async fn main() {
     });
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let server = Server::bind(&addr).serve(req_service);
+    let server = Server::bind(&addr).http1_keepalive(true).serve(req_service);
 
     println!("App is serving on: {}", server.local_addr());
     if let Err(e) = server.await {

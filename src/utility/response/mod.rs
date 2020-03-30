@@ -97,7 +97,7 @@ impl<T: Serialize> JsonResponse<T> {
 
         Ok(Response::builder()
             .status(StatusCode::from_u16(code).unwrap())
-            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_TYPE, "application/json; charset=utf-8")
             .body(body)
             .context("JsonResponse: Failed to create a response")?)
     }

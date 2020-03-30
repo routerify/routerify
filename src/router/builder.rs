@@ -2,7 +2,7 @@ use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
 use crate::utility::handlers;
-use hyper::{Body, Method, Request, Response};
+use hyper::{header, Body, Method, Request, Response};
 use std::future::Future;
 
 struct BuilderInner {
@@ -14,21 +14,26 @@ struct BuilderInner {
 pub struct Builder {
     inner: crate::Result<BuilderInner>,
 }
-
+// X-Powered-By: Express
 impl Builder {
     pub fn new() -> Self {
         Builder::default()
     }
 
     pub fn build(self) -> crate::Result<Router> {
-        self.options("*", handlers::default_options_handler)
-            .all(handlers::default_404_handler)
-            .inner
-            .map(|inner| Router {
-                pre_middlewares: inner.pre_middlewares,
-                routes: inner.routes,
-                post_middlewares: inner.post_middlewares,
-            })
+        self.middleware(Middleware::post(|mut res| async {
+            res.headers_mut()
+                .insert("x-powered-by", header::HeaderValue::from_static("Routerify"));
+            Ok(res)
+        }))
+        .options("*", handlers::default_options_handler)
+        .all(handlers::default_404_handler)
+        .inner
+        .map(|inner| Router {
+            pre_middlewares: inner.pre_middlewares,
+            routes: inner.routes,
+            post_middlewares: inner.post_middlewares,
+        })
     }
 
     fn and_then<F>(self, func: F) -> Self
