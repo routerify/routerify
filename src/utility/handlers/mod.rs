@@ -10,9 +10,8 @@ pub async fn default_404_handler(_: Request<Body>) -> crate::Result<Response<Bod
 
 pub async fn default_options_handler(_: Request<Body>) -> crate::Result<Response<Body>> {
     Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "text/plain")
-        .body(Body::from(StatusCode::OK.canonical_reason().unwrap()))
+        .status(StatusCode::NO_CONTENT)
+        .body(Body::empty())
         .expect("Couldn't create the default OPTIONS response"))
 }
 
