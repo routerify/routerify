@@ -11,6 +11,8 @@ use std::net::SocketAddr;
 
 lazy_static! {
     static ref ROUTER: Router = Router::builder()
+        .get_or_head("/", handle_home)
+        .get("/api", handle_api)
         .middleware(Middleware::post(|mut res| async {
             res.headers_mut()
                 .insert(header::CONNECTION, header::HeaderValue::from_static("keep-alive"));
@@ -19,8 +21,6 @@ lazy_static! {
         .middleware(middlewares::query_parser())
         .middleware(Middleware::pre(middleware_logger))
         .middleware(routerify::utility::middlewares::cors_enable_all())
-        .get_or_head("/", handle_home)
-        .get("/api", handle_api)
         .build()
         .unwrap();
 }
