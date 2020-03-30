@@ -14,7 +14,7 @@ struct BuilderInner {
 pub struct Builder {
     inner: crate::Result<BuilderInner>,
 }
-// X-Powered-By: Express
+
 impl Builder {
     pub fn new() -> Self {
         Builder::default()
