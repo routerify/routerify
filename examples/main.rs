@@ -19,6 +19,7 @@ lazy_static! {
         .middleware(middlewares::cors_enable_all())
         .build()
         .unwrap();
+        // Add charset to every Content-Type header sent from this library.
 }
 
 async fn handle_api(_req: Request<Body>) -> routerify::Result<Response<Body>> {
