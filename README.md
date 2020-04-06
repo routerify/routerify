@@ -8,7 +8,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-routerify = "0.1.1"
+routerify = "0.1"
 ```
 
 ## Examples

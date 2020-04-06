@@ -15,12 +15,10 @@
    }
 
    async fn middleware2(res: Response<Body>) -> neo::Result<Response<Body>> {
-
+      
    }
    
-   let router = Router::new();
-
-   router
+   let router = Router::builder()
    .middleware(Middleware::pre(middleware1))
    .middleware(Middleware::post(middleware2)) 
    .get("/", handler1)
