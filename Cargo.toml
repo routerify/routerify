@@ -1,6 +1,6 @@
 [package]
 name = "routerify"
-version = "0.1.1"
+version = "0.1.2"
 description = "A lightweight router implementation with middleware support for the rust HTTP library hyper"
 homepage = "https://github.com/rousan/routerify"
 repository = "https://github.com/rousan/routerify"
