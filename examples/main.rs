@@ -30,6 +30,7 @@ async fn handle_api(_req: Request<Body>) -> routerify::Result<Response<Body>> {
 
 async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {
     println!("New: {} {} {}", req.remote_addr().unwrap(), req.method(), req.uri());
+
     Ok(req)
 }
 
