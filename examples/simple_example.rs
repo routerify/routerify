@@ -19,7 +19,6 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     println!("{} {} {}", req.remote_addr(), req.method(), req.uri().path());
     Ok(req)
 }
-
 #[tokio::main]
 async fn main() {
     // Create a router and specify the logger middleware and the handlers.

@@ -42,6 +42,7 @@ pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Ve
     Ok((re, params))
 }
 
+#[allow(dead_code)]
 pub(crate) fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}", r"(?s)^", common_regex_str);

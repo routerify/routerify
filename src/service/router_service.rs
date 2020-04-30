@@ -1,19 +1,16 @@
 use crate::constants;
-use crate::helpers;
 use crate::middleware::PostMiddleware;
 use crate::route::Route;
 use crate::router::ErrHandler;
 use crate::router::Router;
 use crate::service::request_service::RequestService;
-use crate::types::RequestMeta;
 use hyper::{
-    body::HttpBody, header, header::HeaderValue, server::conn::AddrStream, service::Service, Method, Request, Response,
+    body::HttpBody, header, header::HeaderValue, server::conn::AddrStream, service::Service, Method, Response,
     StatusCode,
 };
 use std::any::Any;
 use std::convert::Infallible;
 use std::future::Future;
-use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -70,7 +67,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                 Method::OPTIONS,
                 Method::TRACE,
             ],
-            |req| async move {
+            |_req| async move {
                 Ok(Response::builder()
                     .status(StatusCode::NOT_FOUND)
                     .header(header::CONTENT_TYPE, "text/plain")

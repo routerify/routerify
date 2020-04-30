@@ -1,16 +1,7 @@
-use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use routerify::prelude::*;
 use routerify::{Middleware, PreMiddleware, Router, RouterService};
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
 use std::{convert::Infallible, net::SocketAddr};
-
-async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new("Hello, World!".into()))
-}
 
 fn router_explore() -> Router<Body, Infallible> {
     Router::builder()
@@ -102,7 +93,7 @@ fn router() -> Router<Body, routerify::Error> {
             .unwrap(),
         )
         // .get("/", |req| async move { Ok(Response::new("Home".into())) })
-        .get("/", |req| async move { Err(routerify::Error::new("hey")) })
+        .get("/", |_req| async move { Err(routerify::Error::new("hey")) })
         // .scope("/api", router_api())
         // .any(|req| async move { Ok(Response::new("io: Not Found".into())) })
         // .err_handler(|err| async move { Response::new(format!("Something went wrong!: {}", err).into()) })
@@ -112,7 +103,7 @@ fn router() -> Router<Body, routerify::Error> {
 
 #[tokio::main]
 async fn main() {
-    let router = dbg!();
+    let router = dbg!(router());
     let router_service = RouterService::new(router);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

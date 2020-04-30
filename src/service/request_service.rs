@@ -1,16 +1,7 @@
-use crate::constants;
 use crate::helpers;
-use crate::middleware::PostMiddleware;
-use crate::route::Route;
-use crate::router::ErrHandler;
 use crate::router::Router;
 use crate::types::RequestMeta;
-use hyper::{
-    body::HttpBody, header, header::HeaderValue, server::conn::AddrStream, service::Service, Method, Request, Response,
-    StatusCode,
-};
-use std::any::Any;
-use std::convert::Infallible;
+use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
