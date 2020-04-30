@@ -35,14 +35,15 @@ fn generate_common_regex_str(path: &str) -> crate::Result<(String, Vec<String>)>
     Ok((regex_str, param_names))
 }
 
-pub fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
+pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}{}", r"(?s)^", common_regex_str, "$");
     let re = Regex::new(re_str.as_str()).wrap()?;
     Ok((re, params))
 }
 
-pub fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
+#[allow(dead_code)]
+pub(crate) fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}", r"(?s)^", common_regex_str);
     let re = Regex::new(re_str.as_str()).wrap()?;

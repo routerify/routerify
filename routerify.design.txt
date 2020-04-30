@@ -24,6 +24,7 @@
    .get("/", handler1)
    .add("/payments", vec![GET, POST], handler2)
    .router("/api", &static other_router)
-   .all(handle_all);
+   .all(handle_all)
+   .build();
 
    let res = router.process(req);
