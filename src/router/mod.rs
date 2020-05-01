@@ -13,6 +13,40 @@ mod builder;
 pub(crate) type ErrHandler<B> = Box<dyn FnMut(crate::Error) -> ErrHandlerReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
+/// Represents a modular, lightweight and mountable router type.
+///
+/// A router consists of some routes, some pre-middlewares and some post-middlewares. The `Router<B, E>` type accepts two tye parameters: `B` and `E`.
+///
+/// The `B` represents the body type which will be used across route handlers and this body type must implement
+/// the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+/// type as `Router<hyper::Body, hyper::Error>`.
+///
+/// The `E` represents any error type which will be usesd across the route handlers. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
+///
+/// # Examples
+///
+/// ```
+/// use routerify::Router;
+/// use hyper::{Response, Request, Body};
+///
+/// // A handler for "/about" page.
+/// // We will use hyper::Body as body type and hyper::Error as error type.
+/// async fn about_handler(_: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+///     Ok(Response::new(Body::from("About page")))
+/// }
+///
+/// # fn run() -> Router<Body, hyper::Error> {
+/// // Create a router with hyper::Body as body type and hyper::Error as error type.
+/// let router: Router<Body, hyper::Error> = Router::builder()
+///     .get("/about", about_handler)
+///     .build()
+///     .unwrap();
+/// # router
+/// # }
+/// # run();
+/// ```
+///
+/// A `Router` can be created using the `Router::builder()` method.
 pub struct Router<B, E> {
     pub(crate) pre_middlewares: Vec<PreMiddleware<B, E>>,
     pub(crate) routes: Vec<Route<B, E>>,
@@ -23,6 +57,7 @@ pub struct Router<B, E> {
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Router<B, E> {
+    /// Return a [RouterBuilder](./struct.RouterBuilder.html) instance to build a `Router`.
     pub fn builder() -> RouterBuilder<B, E> {
         builder::Builder::new()
     }

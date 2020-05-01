@@ -1,4 +1,3 @@
-use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
@@ -21,6 +20,9 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 }
 
 fn router() -> Router<Body, Infallible> {
+    // Create a router and specify the logger middleware and the handlers.
+    // Here, "Middleware::pre" means we're adding a pre-middleware which will accept
+    // a request and transforms it to a new request.
     Router::builder()
         .middleware(Middleware::pre(logger))
         .get("/", home)
@@ -31,9 +33,6 @@ fn router() -> Router<Body, Infallible> {
 
 #[tokio::main]
 async fn main() {
-    // Create a router and specify the logger middleware and the handlers.
-    // Here, "Middleware::pre" means we're adding a pre-middleware which will accept
-    // a request and transforms it to a new request.
     let router = router();
 
     // Create a Service from the router above to handle all the incoming requests.
@@ -42,7 +41,7 @@ async fn main() {
     // The address on which the server will be listening.
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
-    // Create the server by passing the created service to .`serve` method.
+    // Create a server by passing the created service to `.serve` method.
     let server = Server::bind(&addr).serve(service);
 
     println!("App is running on: {}", addr);

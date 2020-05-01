@@ -5,8 +5,11 @@ use crate::router::ErrHandler;
 use crate::router::Router;
 use crate::service::request_service::RequestService;
 use hyper::{
-    body::HttpBody, header, header::HeaderValue, server::conn::AddrStream, service::Service, Method, Response,
-    StatusCode,
+    body::HttpBody,
+    header::{self, HeaderValue},
+    server::conn::AddrStream,
+    service::Service,
+    Method, Response, StatusCode,
 };
 use std::any::Any;
 use std::convert::Infallible;
@@ -14,6 +17,46 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+/// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
+///
+/// # Examples
+///
+/// ```no_run
+/// use hyper::{Body, Request, Response, Server};
+/// use routerify::{Router, RouterService};
+/// use std::convert::Infallible;
+/// use std::net::SocketAddr;
+///
+/// // A handler for "/" page.
+/// async fn home(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+///     Ok(Response::new(Body::from("Home page")))
+/// }
+///
+/// fn router() -> Router<Body, Infallible> {
+///     Router::builder()
+///         .get("/", home)
+///         .build()
+///         .unwrap()
+/// }
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let router = router();
+///
+///     // Create a Service from the router above to handle incoming requests.
+///     let service = RouterService::new(router);
+///
+///     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+///
+///     // Create a server by passing the created service to `.serve` method.
+///     let server = Server::bind(&addr).serve(service);
+///
+///     println!("App is running on: {}", addr);
+///     if let Err(err) = server.await {
+///         eprintln!("Server error: {}", err);
+///    }
+/// }
+/// ```
 pub struct RouterService<B, E> {
     router: Router<B, E>,
 }
@@ -21,6 +64,8 @@ pub struct RouterService<B, E> {
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
     RouterService<B, E>
 {
+    /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
+    /// method.
     pub fn new(mut router: Router<B, E>) -> RouterService<B, E> {
         let x_powered_by_post_middleware = PostMiddleware::new("/*", |mut res| async move {
             res.headers_mut().insert(
@@ -31,6 +76,14 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
         .unwrap();
         router.post_middlewares.push(x_powered_by_post_middleware);
+
+        let keep_alive_post_middleware = PostMiddleware::new("/*", |mut res| async move {
+            res.headers_mut()
+                .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
+            Ok(res)
+        })
+        .unwrap();
+        router.post_middlewares.push(keep_alive_post_middleware);
 
         let any_obj: &mut dyn Any = &mut router;
         if let Some(router) = any_obj.downcast_mut::<Router<hyper::Body, E>>() {

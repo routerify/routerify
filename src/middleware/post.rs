@@ -9,6 +9,7 @@ use std::pin::Pin;
 type Handler<B, E> = Box<dyn FnMut(Response<B>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
+/// The post middleware type. Refer to [Post Middleware](./index.html#post-middleware) for more info.
 pub struct PostMiddleware<B, E> {
     pub(crate) path: String,
     regex: Regex,
@@ -35,6 +36,24 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
     }
 
+    /// Creates a post middleware with a handler at the specified path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, Middleware, PostMiddleware};
+    /// use hyper::{Response, Body};
+    /// use std::convert::Infallible;
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      .middleware(Middleware::Post(PostMiddleware::new("/abc", |res| async move { /* Do some operations */ Ok(res) }).unwrap()))
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
     pub fn new<P, H, R>(path: P, mut handler: H) -> crate::Result<PostMiddleware<B, E>>
     where
         P: Into<String>,

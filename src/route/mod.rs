@@ -11,6 +11,31 @@ use std::pin::Pin;
 type Handler<B, E> = Box<dyn FnMut(Request<B>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
+/// Represents a single route.
+///
+/// A route consists of a path, http method type(s) and a handler. It shouldn't be created directly, use [RouterBuilder](./struct.RouterBuilder.html) methods
+/// to create a route.
+///
+/// # Examples
+///
+/// ```
+/// use routerify::Router;
+/// use hyper::{Response, Request, Body};
+///
+/// async fn home_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+///     Ok(Response::new(Body::from("home")))
+/// }
+///
+/// # fn run() -> Router<Body, hyper::Error> {
+/// let router = Router::builder()
+///     // Create a route on "/" path for `GET` method.
+///     .get("/", home_handler)
+///     .build()
+///     .unwrap();
+/// # router
+/// # }
+/// # run();
+/// ```
 pub struct Route<B, E> {
     pub(crate) path: String,
     regex: Regex,

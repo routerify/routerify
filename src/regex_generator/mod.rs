@@ -101,28 +101,28 @@ mod tests {
     fn test_generate_common_regex_str_star_globe() {
         let path = "*";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"(.+)".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"(.*)".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*/data";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)/data".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)/data".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*/data/*";
         let r = generate_common_regex_str(path).unwrap();
         assert_eq!(
             r,
             (
-                r"/users/(.+)/data/(.+)".to_owned(),
+                r"/users/(.*)/data/(.*)".to_owned(),
                 vec!["*".to_owned(), "*".to_owned()]
             )
         );
 
         let path = "/users/**";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)(.+)".to_owned(), vec!["*".to_owned(), "*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)(.*)".to_owned(), vec!["*".to_owned(), "*".to_owned()]));
     }
 }

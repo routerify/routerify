@@ -9,6 +9,7 @@ use std::pin::Pin;
 type Handler<B, E> = Box<dyn FnMut(Request<B>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Request<B>, E>> + Send + 'static>;
 
+/// The pre middleware type. Refer to [Pre Middleware](./index.html#pre-middleware) for more info.
 pub struct PreMiddleware<B, E> {
     pub(crate) path: String,
     regex: Regex,
@@ -35,6 +36,24 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
     }
 
+    /// Creates a pre middleware with a handler at the specified path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, Middleware, PreMiddleware};
+    /// use hyper::{Request, Body};
+    /// use std::convert::Infallible;
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      .middleware(Middleware::Pre(PreMiddleware::new("/abc", |req| async move { /* Do some operations */ Ok(req) }).unwrap()))
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
     pub fn new<P, H, R>(path: P, mut handler: H) -> crate::Result<PreMiddleware<B, E>>
     where
         P: Into<String>,

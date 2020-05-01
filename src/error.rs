@@ -1,14 +1,17 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
+/// The error type used by the `Routerify` library.
 pub struct Error {
     msg: String,
 }
 
 impl Error {
+    /// Creates a new error instance with the specified message.
     pub fn new<M: Into<String>>(msg: M) -> Self {
         Error { msg: msg.into() }
     }
 
+    /// Converts other error type to the `routerify::Error` type.
     pub fn wrap<E: std::error::Error + Send + Sync + 'static>(err: E) -> Self {
         Error { msg: err.to_string() }
     }
