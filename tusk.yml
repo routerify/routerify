@@ -4,4 +4,4 @@ tasks:
       - command: cargo install cargo-watch
   dev:
     run:
-      - command: cargo watch --watch ./src --watch ./examples/test.rs -x "run --example test"
+      - command: cargo watch --watch ./src --watch ./examples/test.rs -x 'run --example test'

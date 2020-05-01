@@ -1,29 +1,29 @@
-use crate::types::path_params::PathParams;
+use crate::types::route_params::RouteParams;
 use std::net::SocketAddr;
 
 #[derive(Debug, Clone)]
 pub(crate) struct RequestMeta {
-    path_params: Option<PathParams>,
+    route_params: Option<RouteParams>,
     remote_addr: Option<SocketAddr>,
 }
 
 impl RequestMeta {
-    pub fn with_path_params(path_params: PathParams) -> RequestMeta {
+    pub fn with_route_params(route_params: RouteParams) -> RequestMeta {
         RequestMeta {
-            path_params: Some(path_params),
+            route_params: Some(route_params),
             remote_addr: None,
         }
     }
 
     pub fn with_remote_addr(remote_addr: SocketAddr) -> RequestMeta {
         RequestMeta {
-            path_params: None,
+            route_params: None,
             remote_addr: Some(remote_addr),
         }
     }
 
-    pub fn path_params(&self) -> Option<&PathParams> {
-        self.path_params.as_ref()
+    pub fn route_params(&self) -> Option<&RouteParams> {
+        self.route_params.as_ref()
     }
 
     pub fn remote_addr(&self) -> Option<&SocketAddr> {
@@ -35,11 +35,11 @@ impl RequestMeta {
             self.remote_addr = Some(other_ra)
         }
 
-        if let Some(other_pm) = other_req_meta.path_params {
-            if let Some(ref mut existing_pm) = self.path_params {
+        if let Some(other_pm) = other_req_meta.route_params {
+            if let Some(ref mut existing_pm) = self.route_params {
                 existing_pm.extend(other_pm);
             } else {
-                self.path_params = Some(other_pm);
+                self.route_params = Some(other_pm);
             }
         }
     }

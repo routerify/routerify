@@ -20,21 +20,17 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     Ok(req)
 }
 
-fn router() -> Router<Body, Infallible> {
-    Router::builder()
-        .middleware(Middleware::pre(logger))
-        .get("/", home)
-        .get("/about", about)
-        .build()
-        .unwrap()
-}
-
 #[tokio::main]
 async fn main() {
     // Create a router and specify the logger middleware and the handlers.
     // Here, "Middleware::pre" means we're adding a pre-middleware which will accept
     // a request and transforms it to a new request.
-    let router = router();
+    let router = Router::builder()
+        .middleware(Middleware::pre(logger))
+        .get("/", home)
+        .get("/about", about)
+        .build()
+        .unwrap();
 
     // Create a Service from the router above to handle all the incoming requests.
     let service = RouterService::new(router);

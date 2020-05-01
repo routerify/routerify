@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct PathParams(HashMap<String, String>);
+pub struct RouteParams(HashMap<String, String>);
 
-impl PathParams {
-    pub fn new() -> PathParams {
-        PathParams(HashMap::new())
+impl RouteParams {
+    pub fn new() -> RouteParams {
+        RouteParams(HashMap::new())
     }
 
-    pub fn with_capacity(capacity: usize) -> PathParams {
-        PathParams(HashMap::with_capacity(capacity))
+    pub fn with_capacity(capacity: usize) -> RouteParams {
+        RouteParams(HashMap::with_capacity(capacity))
     }
 
     pub fn set<N: Into<String>, V: Into<String>>(&mut self, param_name: N, param_val: V) {
@@ -36,8 +36,8 @@ impl PathParams {
         self.0.iter()
     }
 
-    pub fn extend(&mut self, other_path_params: PathParams) {
-        other_path_params.0.into_iter().for_each(|(key, val)| {
+    pub fn extend(&mut self, other_route_params: RouteParams) {
+        other_route_params.0.into_iter().for_each(|(key, val)| {
             self.set(key, val);
         })
     }

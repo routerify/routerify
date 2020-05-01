@@ -1,7 +1,7 @@
 use crate::helpers;
 use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
-use crate::types::{PathParams, RequestMeta};
+use crate::types::{RequestMeta, RouteParams};
 use hyper::{body::HttpBody, Method, Request, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -14,7 +14,7 @@ type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Sen
 pub struct Route<B, E> {
     pub(crate) path: String,
     regex: Regex,
-    path_params: Vec<String>,
+    route_params: Vec<String>,
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<B, E>>,
@@ -34,7 +34,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Ok(Route {
             path,
             regex: re,
-            path_params: params,
+            route_params: params,
             handler: Some(handler),
             methods,
         })
@@ -74,22 +74,22 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 
     fn generate_req_meta(&self, target_path: &str) -> RequestMeta {
-        let path_params_list = &self.path_params;
-        let ln = path_params_list.len();
+        let route_params_list = &self.route_params;
+        let ln = route_params_list.len();
 
-        let mut path_params = PathParams::with_capacity(ln);
+        let mut route_params = RouteParams::with_capacity(ln);
 
         if ln > 0 {
             if let Some(caps) = self.regex.captures(target_path) {
                 for idx in 0..ln {
                     if let Some(g) = caps.get(idx + 1) {
-                        path_params.set(path_params_list[idx].clone(), String::from(g.as_str()));
+                        route_params.set(route_params_list[idx].clone(), String::from(g.as_str()));
                     }
                 }
             }
         }
 
-        RequestMeta::with_path_params(path_params)
+        RequestMeta::with_route_params(route_params)
     }
 }
 
@@ -97,8 +97,8 @@ impl<B, E> Debug for Route<B, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{{ path: {:?}, regex: {:?}, path_params: {:?}, methods: {:?} }}",
-            self.path, self.regex, self.path_params, self.methods
+            "{{ path: {:?}, regex: {:?}, route_params: {:?}, methods: {:?} }}",
+            self.path, self.regex, self.route_params, self.methods
         )
     }
 }

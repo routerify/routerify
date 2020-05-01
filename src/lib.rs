@@ -1,9 +1,14 @@
+//! The `Routerify` provides routing logic to the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
+//!
+//!
+//!
+
 pub use self::error::Error;
 pub(crate) use self::error::{ErrorExt, ResultExt};
 pub use self::middleware::{Middleware, PostMiddleware, PreMiddleware};
 pub use self::router::{Router, RouterBuilder};
 pub use self::service::{RequestService, RouterService};
-pub use self::types::PathParams;
+pub use self::types::RouteParams;
 
 mod constants;
 mod error;
