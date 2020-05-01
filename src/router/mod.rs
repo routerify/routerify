@@ -17,7 +17,7 @@ pub(crate) type ErrHandlerReturn<B> = Box<dyn Future<Output = Response<B>> + Sen
 ///
 /// A router consists of some routes, some pre-middlewares and some post-middlewares. The `Router<B, E>` type accepts two tye parameters: `B` and `E`.
 ///
-/// The `B` represents the body type which will be used across route handlers and this body type must implement
+/// The `B` represents the request body type which will be used across route handlers and this body type must implement
 /// the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
 /// type as `Router<hyper::Body, hyper::Error>`.
 ///
@@ -30,13 +30,13 @@ pub(crate) type ErrHandlerReturn<B> = Box<dyn Future<Output = Response<B>> + Sen
 /// use hyper::{Response, Request, Body};
 ///
 /// // A handler for "/about" page.
-/// // We will use hyper::Body as body type and hyper::Error as error type.
+/// // We will use hyper::Body as request body type and hyper::Error as error type.
 /// async fn about_handler(_: Request<Body>) -> Result<Response<Body>, hyper::Error> {
 ///     Ok(Response::new(Body::from("About page")))
 /// }
 ///
 /// # fn run() -> Router<Body, hyper::Error> {
-/// // Create a router with hyper::Body as body type and hyper::Error as error type.
+/// // Create a router with hyper::Body as request body type and hyper::Error as error type.
 /// let router: Router<Body, hyper::Error> = Router::builder()
 ///     .get("/about", about_handler)
 ///     .build()

@@ -1,20 +1,20 @@
-//! The `Routerify` provides routing logic to the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
+//! The `Routerify` provides a lightweight and modular router implementation with middleware support for the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
 //!
-//! There are lot of web server framework for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
-//! is one of them and it provides only low level API. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
-//! by providing that missing feature.
+//! There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
+//! is one of them, and it provides only low level API. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
+//! by providing that missing feature without compromising any performance.
 //!
 //! The `Routerify` offers the following features:
 //!
-//! - 📡 Allows to define complex routing logic.
+//! - 📡 Allows defining complex routing logic.
 //!
 //! - 🔨 Provides middleware support.
 //!
 //! - 🌀 Supports Route Parameters.
 //!
-//! - 🚀 Fast and ready for production use.
+//! - 🚀 Fast as hyper.rs and ready for production use.
 //!
-//! - 🍺 It supports any body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
+//! - 🍺 It supports any request body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 //!
 //! - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
 //!
@@ -26,17 +26,18 @@
 //!
 //! ```no_run
 //! use hyper::{Body, Request, Response, Server};
+//! // Import the routerify prelude traits.
 //! use routerify::prelude::*;
 //! use routerify::{Middleware, Router, RouterService};
 //! use std::{convert::Infallible, net::SocketAddr};
 //!
 //! // A handler for "/" page.
-//! async fn home(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+//! async fn home_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 //!     Ok(Response::new(Body::from("Home page")))
 //! }
 //!
 //! // A handler for "/about" page.
-//! async fn about(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+//! async fn about_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 //!     Ok(Response::new(Body::from("About page")))
 //! }
 //!
@@ -46,15 +47,15 @@
 //!     Ok(req)
 //! }
 //!
-//! // Create a `Router<Body, Infallible>` for body type `hyper::Body` and for handler error type `Infallible`.
+//! // Create a `Router<Body, Infallible>` for request body type `hyper::Body` and for handler error type `Infallible`.
 //! fn router() -> Router<Body, Infallible> {
 //!     // Create a router and specify the logger middleware and the handlers.
-//!     // Here, "Middleware::pre" means we're adding a pre-middleware which will accept
-//!     // a request and transforms it to a new request.
+//!     // Here, "Middleware::pre" means we're adding a pre middleware which will be executed
+//!     // before any route handlers.
 //!     Router::builder()
 //!         .middleware(Middleware::pre(logger))
-//!         .get("/", home)
-//!         .get("/about", about)
+//!         .get("/", home_handler)
+//!         .get("/about", about_handler)
 //!         .build()
 //!         .unwrap()
 //! }
@@ -78,6 +79,7 @@
 //!    }
 //! }
 //! ```
+//!
 //! ## Routing
 //!
 //! ### Route Handlers

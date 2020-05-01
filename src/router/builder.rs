@@ -465,7 +465,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
     }
 
-    /// It mounts a router onto another router. It can be very useful when you want to write moduler routing logic.
+    /// It mounts a router onto another router. It can be very useful when you want to write modular routing logic.
     ///
     /// # Examples
     ///
