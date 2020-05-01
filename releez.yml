@@ -1,1 +1,53 @@
-// call cargo fmt, cargo check --release, cargo test --release on develop.
+version: 1.0.0
+checklist:
+  - name: Checkout develop and sync with remote
+    type: auto
+    run:
+      - git checkout develop
+      - git push
+  - name: Check syntax
+    type: auto
+    run:
+      - cargo check --release
+  - name: Run tests
+    type: auto
+    run:
+      - cargo test --release
+  - name: Start a new release branch
+    type: auto
+    run:
+      - git flow release start "v${VERSION}"
+  - name: Make sure code is formatted
+    type: auto
+    run:
+      - cargo fmt
+  - name: Bump version
+    type: manual
+    instructions:
+      - Please update version with ${VERSION} in Cargo.toml file.
+      - Please update version with ${VERSION} in README.md file if needed.
+  - name: Commit changes
+    type: auto
+    run:
+      - git add --all && git commit -m "Bump version"
+  - name: Finish release branch
+    type: auto
+    run:
+      - git flow release finish -s "v${VERSION}"
+  - name: Push branches and tags to Github
+    type: auto
+    run:
+      - git checkout master
+      - git push origin master
+      - git push origin develop
+      - git push --tags
+  - name: Edit tag on Github
+    type: manual
+    instructions:
+      - Tag is pushed to Github(https://github.com/routerify/routerify/releases). Edit it there and make it a release.
+  - name: Publsih to crates.io
+    type: auto
+    confirm: Are you sure to publish it to crates.io?
+    run:
+      - cargo publish
+      - git checkout develop

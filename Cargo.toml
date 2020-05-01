@@ -1,12 +1,12 @@
 [package]
 name = "routerify"
 version = "0.1.2"
-description = "A lightweight router implementation with middleware support for the rust HTTP library hyper"
+description = "A lightweight and modular router implementation with middleware support for the existing Rust HTTP library hyper.rs."
 homepage = "https://github.com/routerify/routerify"
 repository = "https://github.com/routerify/routerify"
-keywords = ["hyper", "http", "routing", "middleware"]
+keywords = ["hyper", "http", "router", "routing", "middleware"]
 categories = ["asynchronous", "web-programming", "web-programming::http-server"]
-authors = ["Rousan Ali <rousanali786@gmail.com>"]
+authors = ["Rousan Ali <hello@rousan.io>"]
 readme = "README.md"
 license = "MIT"
 edition = "2018"
