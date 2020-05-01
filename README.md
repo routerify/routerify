@@ -1,3 +1,17 @@
+<div align="center">
+  <a href="https://github.com/routerify">
+    <img width="200" height="200" src="https://avatars0.githubusercontent.com/u/64579326?s=200&v=4">
+  </a>
+  <br />
+  <br />
+</div>
+
+[![Github Actions Status](https://github.com/routerify/routerify/workflows/Test/badge.svg)](https://github.com/routerify/routerify/actions)
+[![crates.io](https://img.shields.io/crates/v/routerify.svg)](https://crates.io/crates/routerify)
+[![Documentation](https://docs.rs/routerify/badge.svg)](https://docs.rs/routerify)
+[![Contributors](https://img.shields.io/github/contributors/routerify/routerify.svg)](https://github.com/orgs/routerify/people)
+[![MIT](https://img.shields.io/crates/l/routerify.svg)](./LICENSE)
+
 # Routerify
 
 The `Routerify` provides a lightweight and modular router implementation with middleware support for the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
