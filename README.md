@@ -14,7 +14,7 @@
 
 # Routerify
 
-The `Routerify` provides a lightweight and modular router implementation with middleware support for the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
+The `Routerify` provides a lightweight and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
 
 There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
 is one of them, and it provides only low level API. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
