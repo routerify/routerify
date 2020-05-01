@@ -1,16 +1,19 @@
+options:
+  version:
+    usage: The next release version
+    short: v
+    required: true
 tasks:
   setup:
     run:
       - command: cargo install cargo-watch
+      - command: cargo install releez
   dev:
     run:
-      - command: cargo watch --watch ./src --watch ./examples -x "run --example main"
-  check:prod:
+      - command: cargo watch --watch ./src --watch ./examples/test.rs -x 'run --example test'
+  doc:
     run:
-      - command: cargo check --release
-  check:dev:
+      - command: cargo watch -x "doc --open"
+  release:
     run:
-      - command: cargo check
-  check:
-    run:
-      task: check:prod
+      - command: releez "${version}"

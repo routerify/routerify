@@ -35,14 +35,15 @@ fn generate_common_regex_str(path: &str) -> crate::Result<(String, Vec<String>)>
     Ok((regex_str, param_names))
 }
 
-pub fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
+pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}{}", r"(?s)^", common_regex_str, "$");
     let re = Regex::new(re_str.as_str()).wrap()?;
     Ok((re, params))
 }
 
-pub fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
+#[allow(dead_code)]
+pub(crate) fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}", r"(?s)^", common_regex_str);
     let re = Regex::new(re_str.as_str()).wrap()?;
@@ -100,28 +101,28 @@ mod tests {
     fn test_generate_common_regex_str_star_globe() {
         let path = "*";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"(.+)".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"(.*)".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*/data";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)/data".to_owned(), vec!["*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)/data".to_owned(), vec!["*".to_owned()]));
 
         let path = "/users/*/data/*";
         let r = generate_common_regex_str(path).unwrap();
         assert_eq!(
             r,
             (
-                r"/users/(.+)/data/(.+)".to_owned(),
+                r"/users/(.*)/data/(.*)".to_owned(),
                 vec!["*".to_owned(), "*".to_owned()]
             )
         );
 
         let path = "/users/**";
         let r = generate_common_regex_str(path).unwrap();
-        assert_eq!(r, (r"/users/(.+)(.+)".to_owned(), vec!["*".to_owned(), "*".to_owned()]));
+        assert_eq!(r, (r"/users/(.*)(.*)".to_owned(), vec!["*".to_owned(), "*".to_owned()]));
     }
 }

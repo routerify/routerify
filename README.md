@@ -1,71 +1,112 @@
+<div align="center">
+  <a href="https://github.com/routerify">
+    <img width="200" height="200" src="https://avatars0.githubusercontent.com/u/64579326?s=200&v=4">
+  </a>
+  <br />
+  <br />
+</div>
+
+[![Github Actions Status](https://github.com/routerify/routerify/workflows/Test/badge.svg)](https://github.com/routerify/routerify/actions)
+[![crates.io](https://img.shields.io/crates/v/routerify.svg)](https://crates.io/crates/routerify)
+[![Documentation](https://docs.rs/routerify/badge.svg)](https://docs.rs/routerify)
+[![Contributors](https://img.shields.io/github/contributors/routerify/routerify.svg)](https://github.com/orgs/routerify/people)
+[![MIT](https://img.shields.io/crates/l/routerify.svg)](./LICENSE)
+
 # Routerify
 
-A lightweight router implementation with middleware support for the rust HTTP library [hyper](https://hyper.rs/).
+The `Routerify` provides a lightweight and modular router implementation with middleware support for the existing Rust HTTP library [hyper.rs](https://hyper.rs/).
 
-## Usage
+There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
+is one of them, and it provides only low level API. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
+by providing that missing feature without compromising any performance.
 
-Add this to your Cargo.toml:
+The `Routerify` offers the following features:
+
+- 📡 Allows defining complex routing logic.
+- 🔨 Provides middleware support.
+- 🌀 Supports Route Parameters.
+- 🚀 Fast as `hyper.rs` and ready for production use.
+- 🍺 It supports any request body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
+- ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
+- 🍗 Extensive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
+
+## Install
+
+Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "0.1"
+routerify = "1.0"
 ```
 
-## Examples
+## Basic Example
+
+A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
 
 ```rust
-use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use lazy_static::lazy_static;
-use routerify::{Middleware, Router};
-use std::convert::Infallible;
-use std::net::SocketAddr;
+// Import the routerify prelude traits.
+use routerify::prelude::*;
+use routerify::{Middleware, Router, RouterService};
+use std::{convert::Infallible, net::SocketAddr};
 
-lazy_static! {
-  static ref API_ROUTER: Router = Router::builder()
-    .middleware(Middleware::pre(middleware_logger))
-    .get("/users/:username/view", handle_api_users)
-    .build()
-    .unwrap();
+// A handler for "/" page.
+async fn home_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+    Ok(Response::new(Body::from("Home page")))
 }
 
-lazy_static! {
-  static ref ROUTER: Router = Router::builder()
-    .middleware(Middleware::pre(middleware_logger))
-    .get("/", handle_home)
-    .router("/api", &*API_ROUTER)
-    .build()
-    .unwrap();
+// A handler for "/about" page.
+async fn about_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+    Ok(Response::new(Body::from("About page")))
 }
 
-async fn handle_api_users(_req: Request<Body>) -> routerify::Result<Response<Body>> {
-  Ok(Response::new(Body::from("Fetch an user data")))
+// A middleware which logs an http request.
+async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
+    println!("{} {} {}", req.remote_addr(), req.method(), req.uri().path());
+    Ok(req)
 }
 
-async fn middleware_logger(req: Request<Body>) -> routerify::Result<Request<Body>> {
-  println!("Visited: {} {}", req.method(), req.uri());
-  Ok(req)
-}
-
-async fn handle_home(_req: Request<Body>) -> routerify::Result<Response<Body>> {
-  Ok(Response::new(Body::from("Hello Home")))
+// Create a `Router<Body, Infallible>` for request body type `hyper::Body` and for handler error type `Infallible`.
+fn router() -> Router<Body, Infallible> {
+    // Create a router and specify the logger middleware and the handlers.
+    // Here, "Middleware::pre" means we're adding a pre middleware which will be executed
+    // before any route handlers.
+    Router::builder()
+        .middleware(Middleware::pre(logger))
+        .get("/", home_handler)
+        .get("/about", about_handler)
+        .build()
+        .unwrap()
 }
 
 #[tokio::main]
 async fn main() {
-  let req_service = make_service_fn(|_conn| async {
-    Ok::<_, Infallible>(service_fn(|req: Request<Body>| async {
-      Ok::<Response<Body>, Infallible>(routerify::handle_request(&*ROUTER, req).await)
-    }))
-  });
+    let router = router();
 
-  let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-  let server = Server::bind(&addr)
-    .serve(req_service);
+    // Create a Service from the router above to handle incoming requests.
+    let service = RouterService::new(router);
 
-  println!("App is serving on: {}", server.local_addr());
-  if let Err(e) = server.await {
-    eprintln!("Server Error: {}", e);
-  }
+    // The address on which the server will be listening.
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+
+    // Create a server by passing the created service to `.serve` method.
+    let server = Server::bind(&addr).serve(service);
+
+    println!("App is running on: {}", addr);
+    if let Err(err) = server.await {
+        eprintln!("Server error: {}", err);
+   }
 }
 ```
+
+## Documentation
+
+Please visit: [Docs](https://docs.rs/routerify) for an extensive documentation.
+
+## Examples
+
+The common [examples](https://github.com/routerify/routerify/tree/master/examples).
+
+## Contributing
+
+Your PRs and suggestions are always welcome.
