@@ -45,7 +45,7 @@ checklist:
     type: manual
     instructions:
       - Tag is pushed to Github(https://github.com/routerify/routerify/releases). Edit it there and make it a release.
-  - name: Publsih to crates.io
+  - name: Publish to crates.io
     type: auto
     confirm: Are you sure to publish it to crates.io?
     run:
