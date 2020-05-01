@@ -4,12 +4,12 @@ use routerify::{Middleware, Router, RouterService};
 use std::{convert::Infallible, net::SocketAddr};
 
 // A handler for "/" page.
-async fn home(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+async fn home_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new(Body::from("Home page")))
 }
 
 // A handler for "/about" page.
-async fn about(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+async fn about_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new(Body::from("About page")))
 }
 
@@ -25,8 +25,8 @@ fn router() -> Router<Body, Infallible> {
     // a request and transforms it to a new request.
     Router::builder()
         .middleware(Middleware::pre(logger))
-        .get("/", home)
-        .get("/about", about)
+        .get("/", home_handler)
+        .get("/about", about_handler)
         .build()
         .unwrap()
 }
@@ -35,11 +35,11 @@ fn router() -> Router<Body, Infallible> {
 async fn main() {
     let router = router();
 
-    // Create a Service from the router above to handle all the incoming requests.
+    // Create a Service from the router above to handle incoming requests.
     let service = RouterService::new(router);
 
     // The address on which the server will be listening.
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
 
     // Create a server by passing the created service to `.serve` method.
     let server = Server::bind(&addr).serve(service);

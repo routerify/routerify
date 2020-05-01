@@ -1,6 +1,6 @@
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, Response, Server};
 use routerify::prelude::*;
-use routerify::{Middleware, PreMiddleware, Router, RouterService};
+use routerify::{Middleware, Router, RouterService};
 use std::{convert::Infallible, net::SocketAddr};
 
 fn router_explore() -> Router<Body, Infallible> {

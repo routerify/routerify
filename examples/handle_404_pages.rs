@@ -1,7 +1,5 @@
-use hyper::{header::HeaderValue, Body, Request, Response, Server};
-// Import the routerify prelude traits.
-use routerify::prelude::*;
-use routerify::{Middleware, Router, RouterService};
+use hyper::{Body, Request, Response, Server, StatusCode};
+use routerify::{Router, RouterService};
 use std::io;
 use std::net::SocketAddr;
 
@@ -15,32 +13,21 @@ async fn about_handler(_: Request<Body>) -> Result<Response<Body>, io::Error> {
     Ok(Response::new(Body::from("About page")))
 }
 
-// Define a pre middleware handler which will be executed on every request and
-// logs some meta.
-async fn logger_middleware(req: Request<Body>) -> Result<Request<Body>, io::Error> {
-    println!("{} {} {}", req.remote_addr(), req.method(), req.uri().path());
-    Ok(req)
-}
-
-// Define a post middleware handler which will be executed on every request and
-// adds a header to the response.
-async fn my_custom_header_adder_middleware(mut res: Response<Body>) -> Result<Response<Body>, io::Error> {
-    res.headers_mut()
-        .insert("x-custom-header", HeaderValue::from_static("some value"));
-    Ok(res)
+// Define a handler to handle any non-existent routes i.e. a 404 handler.
+async fn handler_404(_: Request<Body>) -> Result<Response<Body>, io::Error> {
+    Ok(Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Body::from("Page Not Found"))
+        .unwrap())
 }
 
 fn router() -> Router<Body, io::Error> {
     // Create a router and specify the the handlers.
     Router::builder()
-        // Create a pre middleware using `Middleware::pre()` method
-        // and attach it to the router.
-        .middleware(Middleware::pre(logger_middleware))
-        // Create a post middleware using `Middleware::post()` method
-        // and attach it to the router.
-        .middleware(Middleware::post(my_custom_header_adder_middleware))
         .get("/", home_handler)
         .get("/about", about_handler)
+        // Add a route to handle 404 routes.
+        .any(handler_404)
         .build()
         .unwrap()
 }

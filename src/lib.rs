@@ -12,11 +12,13 @@
 //!
 //! - 🌀 Supports Route Parameters.
 //!
-//! - 🚀 Very fast and ready for production use.
+//! - 🚀 Fast and ready for production use.
 //!
 //! - 🍺 It supports any body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 //!
 //! - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
+//!
+//! - 🍗 Extensive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 //!
 //! ## Basic Example
 //!
