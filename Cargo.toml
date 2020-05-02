@@ -19,3 +19,4 @@ lazy_static = "1.4"
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }
+stream-body = "0.1"

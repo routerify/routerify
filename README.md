@@ -26,7 +26,7 @@ The `Routerify` offers the following features:
 - 🔨 Provides middleware support.
 - 🌀 Supports Route Parameters.
 - 🚀 Fast as `hyper.rs` and ready for production use.
-- 🍺 It supports any request body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
+- 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
 - 🍗 Extensive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 
@@ -66,7 +66,7 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     Ok(req)
 }
 
-// Create a `Router<Body, Infallible>` for request body type `hyper::Body` and for handler error type `Infallible`.
+// Create a `Router<Body, Infallible>` for response body type `hyper::Body` and for handler error type `Infallible`.
 fn router() -> Router<Body, Infallible> {
     // Create a router and specify the logger middleware and the handlers.
     // Here, "Middleware::pre" means we're adding a pre middleware which will be executed

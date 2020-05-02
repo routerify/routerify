@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Request<B>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
+type Handler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// Represents a single route.
@@ -68,10 +68,10 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, mut handler: H) -> crate::Result<Route<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<B>) -> R + Send + Sync + 'static,
+        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
-        let handler: Handler<B, E> = Box::new(move |req: Request<B>| Box::new(handler(req)));
+        let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
         Route::new_with_boxed_handler(path, methods, handler)
     }
 
@@ -79,7 +79,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         self.regex.is_match(target_path) && self.methods.contains(method)
     }
 
-    pub(crate) async fn process(&mut self, target_path: &str, mut req: Request<B>) -> crate::Result<Response<B>> {
+    pub(crate) async fn process(
+        &mut self,
+        target_path: &str,
+        mut req: Request<hyper::Body>,
+    ) -> crate::Result<Response<B>> {
         self.push_req_meta(target_path, &mut req);
 
         let handler = self
@@ -90,11 +94,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Pin::from(handler(req)).await.wrap()
     }
 
-    fn push_req_meta(&self, target_path: &str, req: &mut Request<B>) {
+    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {
         self.update_req_meta(req, self.generate_req_meta(target_path));
     }
 
-    fn update_req_meta(&self, req: &mut Request<B>, req_meta: RequestMeta) {
+    fn update_req_meta(&self, req: &mut Request<hyper::Body>, req_meta: RequestMeta) {
         helpers::update_req_meta_in_extensions(req.extensions_mut(), req_meta);
     }
 

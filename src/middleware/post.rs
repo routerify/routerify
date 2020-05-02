@@ -60,7 +60,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         H: FnMut(Response<B>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
-        let handler: Handler<B, E> = Box::new(move |req: Response<B>| Box::new(handler(req)));
+        let handler: Handler<B, E> = Box::new(move |res: Response<B>| Box::new(handler(res)));
         PostMiddleware::new_with_boxed_handler(path, handler)
     }
 
