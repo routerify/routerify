@@ -10,6 +10,10 @@ type Handler<E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<E> + Send
 type HandlerReturn<E> = Box<dyn Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static>;
 
 /// The pre middleware type. Refer to [Pre Middleware](./index.html#pre-middleware) for more info.
+///
+/// This `PreMiddleware<E>` type accepts a single type parameter: `E`.
+///
+/// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 pub struct PreMiddleware<E> {
     pub(crate) path: String,
     regex: Regex,

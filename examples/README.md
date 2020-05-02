@@ -2,7 +2,7 @@
 
 These examples show of how to do common tasks using `routerify`.
 
-Please visit: [Docs](https://docs.rs/routerify) for an extensive documentation.
+Please visit: [Docs](https://docs.rs/routerify) for an exhaustive documentation.
 
 Run an example:
 
@@ -10,7 +10,7 @@ Run an example:
  cargo run --example example_name
 ```
 `
-* [`simple_example`](simple_example.rs) - A basic exmaple using `Routerify`.
+* [`simple_example`](simple_example.rs) - A basic example using `Routerify`.
 
 * [`error_handling`](error_handling.rs) - Shows how to handle any error in `Routerify`.
 
@@ -22,4 +22,4 @@ Run an example:
 
 * [`scoped_router`](scoped_router.rs) - Shows how to write modular routing logic by mounting a router on another router.
 
-
+* [`using_stream_body`](using_stream_body.rs) - An example on how to use a different response body type ([StreamBody](https://github.com/rousan/stream-body)) other than `hyper::Body`.

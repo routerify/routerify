@@ -19,6 +19,13 @@ use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
 ///
+/// This `RouterService<B, E>` type accepts two type parameters: `B` and `E`.
+///
+/// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
+///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   type.
+/// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
+///
 /// # Examples
 ///
 /// ```no_run
@@ -72,6 +79,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
         Self::init_router_with_global_options_route(&mut router);
         Self::init_router_with_default_404_route(&mut router);
+
         Self::init_router_with_err_handler(&mut router);
 
         RouterService { router }

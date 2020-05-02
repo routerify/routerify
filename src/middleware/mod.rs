@@ -7,7 +7,14 @@ pub use self::pre::PreMiddleware;
 mod post;
 mod pre;
 
-/// The enum type for all the middleware types. Please refer to the [Middleware](./index.html#middleware) to know more about middlewares.
+/// Enum type for all the middleware types. Please refer to the [Middleware](./index.html#middleware) for more info.
+///
+/// This `Middleware<B, E>` type accepts two type parameters: `B` and `E`.
+///
+/// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
+///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   type.
+/// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 #[derive(Debug)]
 pub enum Middleware<B, E> {
     /// Variant for the pre middleware. Refer to [Pre Middleware](./index.html#pre-middleware) for more info.

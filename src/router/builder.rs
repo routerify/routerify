@@ -8,7 +8,12 @@ use std::future::Future;
 
 /// Builder for the [Router](./struct.Router.html) type.
 ///
-/// It provides all the possible ways to add different type of `routes`, methods to add `pre middlewares` and `post middlewares`.
+/// This `RouterBuilder<B, E>` type accepts two type parameters: `B` and `E`.
+///
+/// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
+///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   type.
+/// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 ///
 /// # Examples
 ///
@@ -30,6 +35,7 @@ use std::future::Future;
 ///
 /// # fn run() -> Router<Body, hyper::Error> {
 /// // Use Router::builder() method to create a new RouterBuilder instance.
+/// // We will use hyper::Body as response body type and hyper::Error as error type.
 /// let router: Router<Body, hyper::Error> = Router::builder()
 ///     .get("/", home_handler)
 ///     .post("/upload", upload_handler)
@@ -40,7 +46,7 @@ use std::future::Future;
 /// # }
 /// # run();
 /// ```
-pub struct Builder<B, E> {
+pub struct RouterBuilder<B, E> {
     inner: crate::Result<BuilderInner<B, E>>,
 }
 
@@ -51,10 +57,12 @@ struct BuilderInner<B, E> {
     err_handler: Option<ErrHandler<B>>,
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Builder<B, E> {
+impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
+    RouterBuilder<B, E>
+{
     /// Creates a new `RouterBuilder` instance with default options.
-    pub fn new() -> Builder<B, E> {
-        Builder::default()
+    pub fn new() -> RouterBuilder<B, E> {
+        RouterBuilder::default()
     }
 
     /// Creates a new [Router](./struct.Router.html) instance from the added configuration.
@@ -71,13 +79,15 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     where
         F: FnOnce(BuilderInner<B, E>) -> crate::Result<BuilderInner<B, E>>,
     {
-        Builder {
+        RouterBuilder {
             inner: self.inner.and_then(func),
         }
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Builder<B, E> {
+impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
+    RouterBuilder<B, E>
+{
     /// Adds a new route with `GET` method and the handler at the specified path.
     ///
     /// # Examples
@@ -541,7 +551,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Builder<B, E> {
+impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
+    RouterBuilder<B, E>
+{
     /// Adds a single middleware. A pre middleware can be created by [`Middleware::pre`](./enum.Middleware.html#method.pre) method and a post
     /// middleware can be created by [`Middleware::post`](./enum.Middleware.html#method.post) method.
     ///
@@ -595,10 +607,10 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Default
-    for Builder<B, E>
+    for RouterBuilder<B, E>
 {
-    fn default() -> Builder<B, E> {
-        Builder {
+    fn default() -> RouterBuilder<B, E> {
+        RouterBuilder {
             inner: Ok(BuilderInner {
                 pre_middlewares: Vec::new(),
                 routes: Vec::new(),
