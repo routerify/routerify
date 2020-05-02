@@ -30,6 +30,8 @@ The `Routerify` offers the following features:
 - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
 - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 
+To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
+
 ## Install
 
 Add this to your `Cargo.toml` file:
