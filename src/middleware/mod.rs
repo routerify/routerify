@@ -7,11 +7,18 @@ pub use self::pre::PreMiddleware;
 mod post;
 mod pre;
 
-/// The enum type for all the middleware types. Please refer to the [Middleware](./index.html#middleware) to know more about middlewares.
+/// Enum type for all the middleware types. Please refer to the [Middleware](./index.html#middleware) for more info.
+///
+/// This `Middleware<B, E>` type accepts two type parameters: `B` and `E`.
+///
+/// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
+///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   type.
+/// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 #[derive(Debug)]
 pub enum Middleware<B, E> {
     /// Variant for the pre middleware. Refer to [Pre Middleware](./index.html#pre-middleware) for more info.
-    Pre(PreMiddleware<B, E>),
+    Pre(PreMiddleware<E>),
 
     /// Variant for the post middleware. Refer to [Post Middleware](./index.html#post-middleware) for more info.
     Post(PostMiddleware<B, E>),
@@ -40,8 +47,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     /// ```
     pub fn pre<H, R>(handler: H) -> Middleware<B, E>
     where
-        H: FnMut(Request<B>) -> R + Send + Sync + 'static,
-        R: Future<Output = Result<Request<B>, E>> + Send + 'static,
+        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
     {
         Middleware::pre_with_path("/*", handler).unwrap()
     }
@@ -93,8 +100,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     pub fn pre_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<B>) -> R + Send + Sync + 'static,
-        R: Future<Output = Result<Request<B>, E>> + Send + 'static,
+        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
     {
         Ok(Middleware::Pre(PreMiddleware::new(path, handler)?))
     }

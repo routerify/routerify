@@ -1,5 +1,5 @@
 use crate::types::{RequestMeta, RouteParams};
-use hyper::{body::HttpBody, Request};
+use hyper::Request;
 use std::net::SocketAddr;
 
 /// A extension trait which extends the [`hyper::Request`](https://docs.rs/hyper/0.13.5/hyper/struct.Request.html) type with some helpful methods.
@@ -83,7 +83,7 @@ pub trait RequestExt {
     fn remote_addr(&self) -> SocketAddr;
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static> RequestExt for Request<B> {
+impl RequestExt for Request<hyper::Body> {
     fn params(&self) -> &RouteParams {
         self.extensions()
             .get::<RequestMeta>()

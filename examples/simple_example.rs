@@ -1,4 +1,5 @@
 use hyper::{Body, Request, Response, Server};
+// Import the routerify prelude traits.
 use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
 use std::{convert::Infallible, net::SocketAddr};
@@ -21,8 +22,8 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 
 fn router() -> Router<Body, Infallible> {
     // Create a router and specify the logger middleware and the handlers.
-    // Here, "Middleware::pre" means we're adding a pre-middleware which will accept
-    // a request and transforms it to a new request.
+    // Here, "Middleware::pre" means we're adding a pre middleware which will be executed
+    // before any route handlers.
     Router::builder()
         .middleware(Middleware::pre(logger))
         .get("/", home_handler)

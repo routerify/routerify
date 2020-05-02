@@ -22,7 +22,7 @@ unsafe impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + 
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Service<Request<B>> for RequestService<B, E>
+    Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
     type Error = crate::Error;
@@ -32,7 +32,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<hyper::Body>) -> Self::Future {
         helpers::update_req_meta_in_extensions(req.extensions_mut(), RequestMeta::with_remote_addr(self.remote_addr));
 
         let router = unsafe { &mut *self.router };
