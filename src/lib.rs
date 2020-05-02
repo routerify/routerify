@@ -20,6 +20,9 @@
 //!
 //! - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 //!
+//! To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/),
+//! please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
+//!
 //! ## Basic Example
 //!
 //! A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
