@@ -27,7 +27,7 @@ The `Routerify` offers the following features:
 - 🌀 Supports Route Parameters.
 - 🚀 Fast as `hyper.rs` and ready for production use.
 - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
-- ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
+- ❗ Provides a flexible error handling strategy.
 - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
