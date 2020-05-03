@@ -444,7 +444,8 @@
 //! ```
 
 pub use self::error::Error;
-pub(crate) use self::error::{ErrorExt, ResultExt};
+#[doc(hidden)]
+pub use self::error::{ErrorExt, ResultExt};
 pub use self::middleware::{Middleware, PostMiddleware, PreMiddleware};
 pub use self::route::Route;
 pub use self::router::{Router, RouterBuilder};

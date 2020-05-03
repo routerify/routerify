@@ -35,7 +35,7 @@ impl std::error::Error for Error {
     }
 }
 
-pub(crate) trait ErrorExt {
+pub trait ErrorExt {
     fn wrap(self) -> Error;
     fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Error;
 }
@@ -51,7 +51,7 @@ impl<E: std::error::Error + Send + Sync + 'static> ErrorExt for E {
     }
 }
 
-pub(crate) trait ResultExt<T> {
+pub trait ResultExt<T> {
     fn wrap(self) -> Result<T, Error>;
     fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Result<T, Error>;
 }
