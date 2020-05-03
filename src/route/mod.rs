@@ -91,7 +91,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         target_path: &str,
         mut req: Request<hyper::Body>,
     ) -> crate::Result<Response<B>> {
-        self.push_req_meta(target_path, &mut req);
+        self.push_req_meta(target_path, &mut req)?;
 
         let handler = self
             .handler
@@ -101,15 +101,16 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Pin::from(handler(req)).await.wrap()
     }
 
-    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {
-        self.update_req_meta(req, self.generate_req_meta(target_path));
+    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {
+        self.update_req_meta(req, self.generate_req_meta(target_path)?);
+        Ok(())
     }
 
     fn update_req_meta(&self, req: &mut Request<hyper::Body>, req_meta: RequestMeta) {
         helpers::update_req_meta_in_extensions(req.extensions_mut(), req_meta);
     }
 
-    fn generate_req_meta(&self, target_path: &str) -> RequestMeta {
+    fn generate_req_meta(&self, target_path: &str) -> crate::Result<RequestMeta> {
         let route_params_list = &self.route_params;
         let ln = route_params_list.len();
 
@@ -119,13 +120,16 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             if let Some(caps) = self.regex.captures(target_path) {
                 for idx in 0..ln {
                     if let Some(g) = caps.get(idx + 1) {
-                        route_params.set(route_params_list[idx].clone(), String::from(g.as_str()));
+                        route_params.set(
+                            route_params_list[idx].clone(),
+                            helpers::decode_route_param_value(g.as_str())?,
+                        );
                     }
                 }
             }
         }
 
-        RequestMeta::with_route_params(route_params)
+        Ok(RequestMeta::with_route_params(route_params))
     }
 }
 

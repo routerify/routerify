@@ -1,16 +1,17 @@
 use hyper::{Body, Response, Server};
 use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
-use std::{convert::Infallible, net::SocketAddr};
+use std::net::SocketAddr;
 
-fn router_explore() -> Router<Body, Infallible> {
+fn router_explore() -> Router<Body, routerify::Error> {
     Router::builder()
         .middleware(Middleware::pre(|req| async move {
-            println!("Explore: {}", req.remote_addr());
+            // println!("Explore: {}", req.remote_addr());
             Ok(req)
         }))
-        .get("/users/:userName", |req| async move {
-            dbg!(req.param("apiType"));
+        .get("/users/:userName/:data/abc", |req| async move {
+            // dbg!(req.param("apiType"));
+            dbg!(req.params());
             let user_name = req.param("userName").unwrap();
             Ok(Response::new(user_name.to_string().into()))
         })
@@ -22,10 +23,10 @@ fn router_explore() -> Router<Body, Infallible> {
         .unwrap()
 }
 
-fn router_gallery() -> Router<Body, Infallible> {
+fn router_gallery() -> Router<Body, routerify::Error> {
     Router::builder()
         .middleware(Middleware::pre(|req| async move {
-            println!("Gallery: {}", req.remote_addr());
+            // println!("Gallery: {}", req.remote_addr());
             Ok(req)
         }))
         .get("/ip/:ip", |req| async move {
@@ -40,21 +41,21 @@ fn router_gallery() -> Router<Body, Infallible> {
         .unwrap()
 }
 
-fn router_v1() -> Router<Body, Infallible> {
+fn router_v1() -> Router<Body, routerify::Error> {
     Router::builder()
         .get("/ping", |req| async move {
-            dbg!(req.param("apiType"));
+            // dbg!(req.param("apiType"));
             Ok(Response::new("ping".into()))
         })
         .scope("/explore", router_explore())
         .scope("/gallery", router_gallery())
         .middleware(Middleware::post(|res| async move {
-            println!("transformed resp v1");
+            // println!("transformed resp v1");
             Ok(res)
         }))
         .middleware(
             Middleware::post_with_path("/abc", |res| async move {
-                println!("abc transformed resp v1");
+                // println!("abc transformed resp v1");
                 Ok(res)
             })
             .unwrap(),
@@ -63,7 +64,7 @@ fn router_v1() -> Router<Body, Infallible> {
         .unwrap()
 }
 
-fn router_api() -> Router<Body, Infallible> {
+fn router_api() -> Router<Body, routerify::Error> {
     Router::builder().scope("/v1", router_v1()).build().unwrap()
 }
 
@@ -71,22 +72,22 @@ fn router() -> Router<Body, routerify::Error> {
     Router::builder()
         .middleware(
             Middleware::pre_with_path("/abc", |req| async move {
-                println!("pre /abc");
+                // println!("pre /abc");
                 Ok(req)
             })
             .unwrap(),
         )
         .middleware(Middleware::pre(|req| async move {
-            println!("root: {}", req.remote_addr());
+            // println!("root: {}", req.remote_addr());
             Ok(req)
         }))
         .middleware(Middleware::post(|res| async move {
-            println!("transformed resp");
+            // println!("transformed resp");
             Ok(res)
         }))
         .middleware(
             Middleware::post_with_path("/*", |res| async move {
-                println!("abc transformed resp");
+                // println!("abc transformed resp");
                 // Err(routerify::Error::new("remote addr error"))
                 Ok(res)
             })
@@ -94,7 +95,7 @@ fn router() -> Router<Body, routerify::Error> {
         )
         // .get("/", |req| async move { Ok(Response::new("Home".into())) })
         .get("/", |_req| async move { Err(routerify::Error::new("hey")) })
-        // .scope("/api", router_api())
+        .scope("/api", router_api())
         // .any(|req| async move { Ok(Response::new("io: Not Found".into())) })
         // .err_handler(|err| async move { Response::new(format!("Something went wrong!: {}", err).into()) })
         .build()

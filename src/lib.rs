@@ -12,7 +12,7 @@
 //!
 //! - 🌀 Supports Route Parameters.
 //!
-//! - 🚀 Fast as hyper.rs and ready for production use.
+//! - 🚀 No performance compromising when integrated with [hyper.rs](https://hyper.rs/).
 //!
 //! - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 //!
