@@ -52,7 +52,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "1.0"
+routerify = "1.1"
 ```
 
 ## Basic Example
