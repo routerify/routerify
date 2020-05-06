@@ -94,7 +94,7 @@ fn router() -> Router<Body, routerify::Error> {
             .unwrap(),
         )
         // .get("/", |req| async move { Ok(Response::new("Home".into())) })
-        .get("/", |_req| async move { Err(routerify::Error::new("hey")) })
+        .any_method("/", |_req| async move { Ok(Response::new(Body::from("hey"))) })
         .scope("/api", router_api())
         // .any(|req| async move { Ok(Response::new("io: Not Found".into())) })
         // .err_handler(|err| async move { Response::new(format!("Something went wrong!: {}", err).into()) })

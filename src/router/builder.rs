@@ -430,6 +430,37 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         self.add("/*", constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(), handler)
     }
 
+    /// Adds a new route with any method type and the handler at the specified path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::Router;
+    /// use hyper::{Response, Request, Body};
+    ///
+    /// async fn home_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    ///     Ok(Response::new(Body::from("home")))
+    /// }
+    ///
+    /// # fn run() -> Router<Body, hyper::Error> {
+    /// let router = Router::builder()
+    ///     // It will accept requests at any method type at the specified path.
+    ///     .any_method("/", home_handler)
+    ///     .build()
+    ///     .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    pub fn any_method<H, R, P>(self, path: P, handler: H) -> Self
+    where
+        P: Into<String>,
+        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Response<B>, E>> + Send + 'static,
+    {
+        self.add(path, constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(), handler)
+    }
+
     /// Adds a new route with the specified method(s) and the handler at the specified path. It can be used to define routes with multiple method types.
     ///
     /// # Examples
