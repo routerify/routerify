@@ -1,5 +1,4 @@
 use hyper::{Body, Response, Server};
-use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
 use std::net::SocketAddr;
 
@@ -46,44 +45,3 @@ async fn main() {
         eprintln!("server error: {}", e);
     }
 }
-
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 89.154971ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 89.338824ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 90.20536ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 87.520673ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 90.237893ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 87.364556ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 87.477891ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 86.946817ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 86.86861ms
-// PreMiddleware: /abc-9999
-// Route: /abc-9999
-// PostMiddleware: /abc-9999
-// Process time: 88.663156ms
