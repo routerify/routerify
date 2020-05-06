@@ -25,7 +25,7 @@ The `Routerify` offers the following features:
 - 📡 Allows defining complex routing logic.
 - 🔨 Provides middleware support.
 - 🌀 Supports Route Parameters.
-- 🚀 No performance compromising when integrated with [hyper.rs](https://hyper.rs/). 
+- 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.3.7/regex/struct.RegexSet.html) to match routes. 
 - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 - ❗ Provides a flexible error handling strategy.
 - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
@@ -86,7 +86,7 @@ async fn main() {
     let router = router();
 
     // Create a Service from the router above to handle incoming requests.
-    let service = RouterService::new(router);
+    let service = RouterService::new(router).unwrap();
 
     // The address on which the server will be listening.
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

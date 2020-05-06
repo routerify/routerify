@@ -51,7 +51,7 @@ use std::task::{Context, Poll};
 ///     let router = router();
 ///
 ///     // Create a Service from the router above to handle incoming requests.
-///     let service = RouterService::new(router);
+///     let service = RouterService::new(router).unwrap();
 ///
 ///     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 ///
@@ -73,7 +73,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
-    pub fn new(mut router: Router<B, E>) -> RouterService<B, E> {
+    pub fn new(mut router: Router<B, E>) -> crate::Result<RouterService<B, E>> {
         Self::init_router_with_x_powered_by_middleware(&mut router);
         Self::init_router_with_keep_alive_middleware(&mut router);
 
@@ -82,7 +82,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
         Self::init_router_with_err_handler(&mut router);
 
-        RouterService { router }
+        router.init_regex_set()?;
+
+        Ok(RouterService { router })
     }
 
     fn init_router_with_x_powered_by_middleware(router: &mut Router<B, E>) {

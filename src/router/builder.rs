@@ -67,11 +67,13 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
     /// Creates a new [Router](./struct.Router.html) instance from the added configuration.
     pub fn build(self) -> crate::Result<Router<B, E>> {
-        self.inner.map(|inner| Router {
-            pre_middlewares: inner.pre_middlewares,
-            routes: inner.routes,
-            post_middlewares: inner.post_middlewares,
-            err_handler: inner.err_handler,
+        self.inner.map(|inner| {
+            Router::new(
+                inner.pre_middlewares,
+                inner.routes,
+                inner.post_middlewares,
+                inner.err_handler,
+            )
         })
     }
 

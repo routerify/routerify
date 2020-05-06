@@ -41,7 +41,7 @@ async fn main() {
     let router = router();
 
     // Create a Service from the router above to handle incoming requests.
-    let service = RouterService::new(router);
+    let service = RouterService::new(router).unwrap();
 
     // The address on which the server will be listening.
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
