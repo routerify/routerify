@@ -66,9 +66,10 @@ use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
 use std::{convert::Infallible, net::SocketAddr};
 
-// A handler for "/" page.
-async fn home_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new(Body::from("Home page")))
+// A handler for "/:name" page.
+async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let name = req.param("name").unwrap();
+    Ok(Response::new(Body::from(format!("Hello {}", name))))
 }
 
 // A handler for "/about" page.
@@ -89,7 +90,7 @@ fn router() -> Router<Body, Infallible> {
     // before any route handlers.
     Router::builder()
         .middleware(Middleware::pre(logger))
-        .get("/", home_handler)
+        .get("/:name", home_handler)
         .get("/about", about_handler)
         .build()
         .unwrap()
