@@ -1,3 +1,4 @@
+use crate::helpers;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::prelude::*;
 use crate::route::Route;
@@ -96,7 +97,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 
     pub(crate) async fn process(&mut self, req: Request<hyper::Body>) -> crate::Result<Response<B>> {
-        let target_path = req.uri().path().to_string();
+        let target_path =
+            helpers::percent_decode_request_path(req.uri().path()).context("Couldn't percent decode request path")?;
 
         let (matched_pre_middleware_idxs, matched_route_idxs, matched_post_middleware_idxs) =
             self.match_regex_set(target_path.as_str());

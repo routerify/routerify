@@ -120,10 +120,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             if let Some(caps) = self.regex.captures(target_path) {
                 for idx in 0..ln {
                     if let Some(g) = caps.get(idx + 1) {
-                        route_params.set(
-                            route_params_list[idx].clone(),
-                            helpers::decode_route_param_value(g.as_str())?,
-                        );
+                        route_params.set(route_params_list[idx].clone(), g.as_str());
                     }
                 }
             }

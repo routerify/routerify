@@ -11,10 +11,10 @@ pub(crate) fn update_req_meta_in_extensions(ext: &mut Extensions, new_req_meta: 
     }
 }
 
-pub(crate) fn decode_route_param_value(val: &str) -> crate::Result<String> {
+pub(crate) fn percent_decode_request_path(val: &str) -> crate::Result<String> {
     percent_decode_str(val)
         .decode_utf8()
-        .context("Couldn't decode the route param value as UTF8")
+        .context("Couldn't decode the request path as UTF8")
         .map(|val| val.to_string())
 }
 
@@ -23,14 +23,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_decode_route_param_value() {
+    fn test_percent_decode_request_path() {
+        let val = "/Alice%20John/do something";
+        assert_eq!(
+            percent_decode_request_path(val).unwrap(),
+            "/Alice John/do something".to_owned()
+        );
+
         let val = "Alice%20John";
-        assert_eq!(decode_route_param_value(val).unwrap(), "Alice John".to_owned());
+        assert_eq!(percent_decode_request_path(val).unwrap(), "Alice John".to_owned());
 
         let val = "Go<>crazy";
-        assert_eq!(decode_route_param_value(val).unwrap(), "Go<>crazy".to_owned());
+        assert_eq!(percent_decode_request_path(val).unwrap(), "Go<>crazy".to_owned());
 
         let val = "go%crazy";
-        assert_eq!(decode_route_param_value(val).unwrap(), "go%crazy".to_owned());
+        assert_eq!(percent_decode_request_path(val).unwrap(), "go%crazy".to_owned());
     }
 }
