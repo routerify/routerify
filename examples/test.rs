@@ -105,10 +105,10 @@ fn router() -> Router<Body, routerify::Error> {
 #[tokio::main]
 async fn main() {
     let router = dbg!(router());
-    let router_service = RouterService::new(router);
+    let service = RouterService::new(router).unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let server = Server::bind(&addr).serve(router_service);
+    let server = Server::bind(&addr).serve(service);
 
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);
