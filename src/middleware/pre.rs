@@ -16,7 +16,7 @@ type HandlerReturn<E> = Box<dyn Future<Output = Result<Request<hyper::Body>, E>>
 /// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 pub struct PreMiddleware<E> {
     pub(crate) path: String,
-    regex: Regex,
+    pub(crate) regex: Regex,
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<E>>,
@@ -64,10 +64,6 @@ impl<E: std::error::Error + Send + Sync + Unpin + 'static> PreMiddleware<E> {
     {
         let handler: Handler<E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
         PreMiddleware::new_with_boxed_handler(path, handler)
-    }
-
-    pub(crate) fn is_match(&self, target_path: &str) -> bool {
-        self.regex.is_match(target_path)
     }
 
     pub(crate) async fn process(&mut self, req: Request<hyper::Body>) -> crate::Result<Request<hyper::Body>> {

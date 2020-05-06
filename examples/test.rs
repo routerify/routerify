@@ -94,7 +94,7 @@ fn router() -> Router<Body, routerify::Error> {
             .unwrap(),
         )
         // .get("/", |req| async move { Ok(Response::new("Home".into())) })
-        .get("/", |_req| async move { Err(routerify::Error::new("hey")) })
+        .any_method("/", |_req| async move { Ok(Response::new(Body::from("hey"))) })
         .scope("/api", router_api())
         // .any(|req| async move { Ok(Response::new("io: Not Found".into())) })
         // .err_handler(|err| async move { Response::new(format!("Something went wrong!: {}", err).into()) })
@@ -105,10 +105,10 @@ fn router() -> Router<Body, routerify::Error> {
 #[tokio::main]
 async fn main() {
     let router = dbg!(router());
-    let router_service = RouterService::new(router);
+    let service = RouterService::new(router).unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let server = Server::bind(&addr).serve(router_service);
+    let server = Server::bind(&addr).serve(service);
 
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);

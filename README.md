@@ -25,12 +25,26 @@ The `Routerify` offers the following features:
 - 📡 Allows defining complex routing logic.
 - 🔨 Provides middleware support.
 - 🌀 Supports Route Parameters.
-- 🚀 No performance compromising when integrated with [hyper.rs](https://hyper.rs/). 
+- 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.3.7/regex/struct.RegexSet.html) to match routes. 
 - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 - ❗ Provides a flexible error handling strategy.
 - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
+
+## Benchmarks
+
+| Framework      | Language    | Requests/sec |
+|----------------|-------------|--------------|
+| [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,557 |
+| [routerify v1.1](https://github.com/routerify/routerify) with [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,320 |
+| [gotham v0.4.0](https://github.com/gotham-rs/gotham) | Rust 1.43.0 | 100,097 |
+| [actix-web v2](https://github.com/actix/actix-web) | Rust 1.43.0 | 96,397 |
+| [warp v0.2](https://github.com/seanmonstar/warp) | Rust 1.43.0 | 81,912 |
+| [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.13.7 | 74,958 |
+| [Rocket, branch async](https://github.com/SergioBenitez/Rocket) | Rust 1.43.0 | 2,041 ? |
+
+For more info, please visit [Benchmarks](https://github.com/routerify/routerify-benchmark).
 
 ## Install
 
@@ -38,7 +52,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "1.0"
+routerify = "1.1"
 ```
 
 ## Basic Example
@@ -52,9 +66,10 @@ use routerify::prelude::*;
 use routerify::{Middleware, Router, RouterService};
 use std::{convert::Infallible, net::SocketAddr};
 
-// A handler for "/" page.
-async fn home_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new(Body::from("Home page")))
+// A handler for "/:name" page.
+async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let name = req.param("name").unwrap();
+    Ok(Response::new(Body::from(format!("Hello {}", name))))
 }
 
 // A handler for "/about" page.
@@ -75,7 +90,7 @@ fn router() -> Router<Body, Infallible> {
     // before any route handlers.
     Router::builder()
         .middleware(Middleware::pre(logger))
-        .get("/", home_handler)
+        .get("/:name", home_handler)
         .get("/about", about_handler)
         .build()
         .unwrap()
@@ -86,7 +101,7 @@ async fn main() {
     let router = router();
 
     // Create a Service from the router above to handle incoming requests.
-    let service = RouterService::new(router);
+    let service = RouterService::new(router).unwrap();
 
     // The address on which the server will be listening.
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

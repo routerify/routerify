@@ -14,6 +14,9 @@ tasks:
   doc:
     run:
       - command: cargo watch -x "doc --open"
+  check:dev:
+    run:
+      - command: cargo watch -x "check"
   release:
     run:
       - command: releez "${version}"

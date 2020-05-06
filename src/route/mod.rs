@@ -45,7 +45,7 @@ type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Sen
 /// ```
 pub struct Route<B, E> {
     pub(crate) path: String,
-    regex: Regex,
+    pub(crate) regex: Regex,
     route_params: Vec<String>,
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
@@ -82,8 +82,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Route::new_with_boxed_handler(path, methods, handler)
     }
 
-    pub(crate) fn is_match(&self, target_path: &str, method: &Method) -> bool {
-        self.regex.is_match(target_path) && self.methods.contains(method)
+    pub(crate) fn is_match_method(&self, method: &Method) -> bool {
+        self.methods.contains(method)
     }
 
     pub(crate) async fn process(
@@ -120,10 +120,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             if let Some(caps) = self.regex.captures(target_path) {
                 for idx in 0..ln {
                     if let Some(g) = caps.get(idx + 1) {
-                        route_params.set(
-                            route_params_list[idx].clone(),
-                            helpers::decode_route_param_value(g.as_str())?,
-                        );
+                        route_params.set(route_params_list[idx].clone(), g.as_str());
                     }
                 }
             }
