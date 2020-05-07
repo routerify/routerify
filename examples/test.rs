@@ -68,7 +68,7 @@ fn router_api() -> Router<Body, routerify::Error> {
     Router::builder().scope("/v1", router_v1()).build().unwrap()
 }
 
-fn router() -> Router<Body, routerify::Error> {
+fn _router() -> Router<Body, routerify::Error> {
     Router::builder()
         .middleware(
             Middleware::pre_with_path("/abc", |req| async move {
@@ -102,13 +102,45 @@ fn router() -> Router<Body, routerify::Error> {
         .unwrap()
 }
 
+fn router() -> Router<Body, routerify::Error> {
+    Router::builder()
+        .middleware(Middleware::post(|res| async move {
+            // println!("Post without info");
+            Ok(res)
+        }))
+        // .middleware(Middleware::post_with_info(|res, req_info| async move {
+        //     // println!("Post with info: {:?}", req_info.headers());
+        //     Ok(res)
+        // }))
+        // .middleware(Middleware::post_with_info(|res, req_info| async move {
+        //     // println!("Post with info: {:?}", req_info.headers());
+        //     Ok(res)
+        // }))
+        // .middleware(Middleware::post_with_info(|res, req_info| async move {
+        //     // println!("Post with info: {:?}", req_info.headers());
+        //     Ok(res)
+        // }))
+        .get("/", |req| async move { Err(routerify::Error::new("Hey error")) })
+        // .get("/", |req| async move { Ok(Response::new(Body::from("Hello world!"))) })
+        .err_handler(|err| async move {
+            println!("err without info");
+            Response::new(Body::from("Err response"))
+        })
+        // .err_handler_with_info(|err, req_info| async move {
+        //     println!("err2 without info: {:?}", req_info);
+        //     Response::new(Body::from("Err response2"))
+        // })
+        .build()
+        .unwrap()
+}
+
 #[tokio::main]
 async fn main() {
-    let router = dbg!(router());
+    let router = router();
     let service = RouterService::new(router).unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let server = Server::bind(&addr).serve(service);
+    let server = Server::bind(&addr).serve(dbg!(service));
 
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);

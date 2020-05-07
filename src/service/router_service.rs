@@ -64,6 +64,7 @@ use std::task::{Context, Poll};
 ///    }
 /// }
 /// ```
+#[derive(Debug)]
 pub struct RouterService<B, E> {
     router: Router<B, E>,
 }
@@ -83,6 +84,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Self::init_router_with_err_handler(&mut router);
 
         router.init_regex_set()?;
+        router.init_req_info_gen()?;
 
         Ok(RouterService { router })
     }
@@ -177,7 +179,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         }
 
         if let Some(router) = Self::downcast_router_to_hyper_body_type(router) {
-            let handler: ErrHandler<hyper::Body> = Box::new(move |err: crate::Error| {
+            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: crate::Error| {
                 Box::new(async move {
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -189,7 +191,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                         )))
                         .expect("Couldn't create a response while handling the server error")
                 })
-            });
+            }));
             router.err_handler = Some(handler);
         } else {
             eprintln!(

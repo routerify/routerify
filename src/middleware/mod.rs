@@ -1,3 +1,4 @@
+use crate::types::RequestInfo;
 use hyper::{body::HttpBody, Request, Response};
 use std::future::Future;
 
@@ -79,6 +80,41 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Middleware::post_with_path("/*", handler).unwrap()
     }
 
+    /// Creates a post middleware which can access [request info](./struct.RequestInfo.html) e.g. headers, method, uri etc. It should be used when the post middleware trandforms the response based on
+    /// the request information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, Middleware, PostMiddleware, RequestInfo};
+    /// use hyper::{Response, Body};
+    /// use std::convert::Infallible;
+    ///
+    /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
+    ///     let headers = req_info.headers();
+    ///     
+    ///     // Do some response transformation based on the request headers, method etc.
+    ///     
+    ///     Ok(res)
+    /// }
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      .middleware(Middleware::post_with_info(post_middleware_with_info_handler))
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    pub fn post_with_info<H, R>(handler: H) -> Middleware<B, E>
+    where
+        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Response<B>, E>> + Send + 'static,
+    {
+        Middleware::post_with_info_with_path("/*", handler).unwrap()
+    }
+
     /// Create a pre middleware with a handler at the specified path.
     ///
     /// # Examples
@@ -131,5 +167,41 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         Ok(Middleware::Post(PostMiddleware::new(path, handler)?))
+    }
+
+    /// Creates a post middleware which can access [request info](./struct.RequestInfo.html) e.g. headers, method, uri etc. It should be used when the post middleware trandforms the response based on
+    /// the request information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, Middleware, PostMiddleware, RequestInfo};
+    /// use hyper::{Response, Body};
+    /// use std::convert::Infallible;
+    ///
+    /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
+    ///     let _headers = req_info.headers();
+    ///     
+    ///     // Do some response transformation based on the request headers, method etc.
+    ///     
+    ///     Ok(res)
+    /// }
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      .middleware(Middleware::post_with_info_with_path("/abc", post_middleware_with_info_handler).unwrap())
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    pub fn post_with_info_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
+    where
+        P: Into<String>,
+        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Response<B>, E>> + Send + 'static,
+    {
+        Ok(Middleware::Post(PostMiddleware::new_with_info(path, handler)?))
     }
 }
