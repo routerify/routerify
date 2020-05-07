@@ -1,7 +1,10 @@
-use hyper::{header::HeaderValue, Body, Request, Response, Server};
+use hyper::{
+    header::{self, HeaderValue},
+    Body, Request, Response, Server,
+};
 // Import the routerify prelude traits.
 use routerify::prelude::*;
-use routerify::{Middleware, Router, RouterService};
+use routerify::{Middleware, RequestInfo, Router, RouterService};
 use std::io;
 use std::net::SocketAddr;
 
@@ -30,6 +33,18 @@ async fn my_custom_header_adder_middleware(mut res: Response<Body>) -> Result<Re
     Ok(res)
 }
 
+// Define a post middleware handler which will be executed on every request and
+// accesses request information and adds the session cookies to manage session.
+async fn my_session_middleware(mut res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, io::Error> {
+    // Access a cookie.
+    let cookie = req_info.headers().get(header::COOKIE).unwrap().to_str().unwrap();
+
+    res.headers_mut()
+        .insert(header::SET_COOKIE, HeaderValue::from_str(cookie).unwrap());
+
+    Ok(res)
+}
+
 fn router() -> Router<Body, io::Error> {
     // Create a router and specify the the handlers.
     Router::builder()
@@ -39,6 +54,9 @@ fn router() -> Router<Body, io::Error> {
         // Create a post middleware using `Middleware::post()` method
         // and attach it to the router.
         .middleware(Middleware::post(my_custom_header_adder_middleware))
+        // Create a post middleware which will require request info using `Middleware::post_with_info()` method
+        // and attach it to the router.
+        .middleware(Middleware::post_with_info(my_session_middleware))
         .get("/", home_handler)
         .get("/about", about_handler)
         .build()

@@ -14,6 +14,8 @@ Run an example:
 
 * [`error_handling`](error_handling.rs) - Shows how to handle any error in `Routerify`.
 
+* [`error_handling_with_request_info`](error_handling_with_request_info.rs) - Shows how to handle any error in `Routerify` based on the request information e.g. headers, method, uri etc.
+
 * [`handle_404_pages`](handle_404_pages.rs) - An example on how to handle any non-existent pages.
 
 * [`middleware`](middleware.rs) - Shows how to use and define a pre middleware and a post middleware.

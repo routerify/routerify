@@ -1,6 +1,7 @@
 use crate::helpers;
+use crate::prelude::*;
 use crate::router::Router;
-use crate::types::RequestMeta;
+use crate::types::{RequestInfo, RequestMeta};
 use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
@@ -33,16 +34,29 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 
     fn call(&mut self, mut req: Request<hyper::Body>) -> Self::Future {
-        helpers::update_req_meta_in_extensions(req.extensions_mut(), RequestMeta::with_remote_addr(self.remote_addr));
-
         let router = unsafe { &mut *self.router };
+        let remote_addr = self.remote_addr;
 
         let fut = async move {
-            match router.process(req).await {
+            helpers::update_req_meta_in_extensions(req.extensions_mut(), RequestMeta::with_remote_addr(remote_addr));
+
+            let target_path = helpers::percent_decode_request_path(req.uri().path())
+                .context("Couldn't percent decode request path")?;
+
+            let mut req_meta = None;
+            let should_gen_req_meta = router
+                .should_gen_req_info
+                .expect("The `should_gen_req_meta` flag in Router is not initialized");
+
+            if should_gen_req_meta {
+                req_meta = Some(RequestInfo::new_from_req(&req));
+            }
+
+            match router.process(target_path.as_str(), req, req_meta.clone()).await {
                 Ok(resp) => crate::Result::Ok(resp),
                 Err(err) => {
                     if let Some(ref mut err_handler) = router.err_handler {
-                        crate::Result::Ok(Pin::from(err_handler(err)).await)
+                        crate::Result::Ok(err_handler.execute(err, req_meta.clone()).await)
                     } else {
                         crate::Result::Err(err)
                     }

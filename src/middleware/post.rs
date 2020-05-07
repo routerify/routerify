@@ -1,13 +1,18 @@
 use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
+use crate::types::RequestInfo;
 use hyper::{body::HttpBody, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Response<B>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
-type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
+type HandlerWithoutInfo<B, E> = Box<dyn FnMut(Response<B>) -> HandlerWithoutInfoReturn<B, E> + Send + Sync + 'static>;
+type HandlerWithoutInfoReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
+
+type HandlerWithInfo<B, E> =
+    Box<dyn FnMut(Response<B>, RequestInfo) -> HandlerWithInfoReturn<B, E> + Send + Sync + 'static>;
+type HandlerWithInfoReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// The post middleware type. Refer to [Post Middleware](./index.html#post-middleware) for more info.
 ///
@@ -23,6 +28,11 @@ pub struct PostMiddleware<B, E> {
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<B, E>>,
+}
+
+pub(crate) enum Handler<B, E> {
+    WithoutInfo(HandlerWithoutInfo<B, E>),
+    WithInfo(HandlerWithInfo<B, E>),
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
@@ -67,17 +77,77 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         H: FnMut(Response<B>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
-        let handler: Handler<B, E> = Box::new(move |res: Response<B>| Box::new(handler(res)));
-        PostMiddleware::new_with_boxed_handler(path, handler)
+        let handler: HandlerWithoutInfo<B, E> = Box::new(move |res: Response<B>| Box::new(handler(res)));
+        PostMiddleware::new_with_boxed_handler(path, Handler::WithoutInfo(handler))
     }
 
-    pub(crate) async fn process(&mut self, res: Response<B>) -> crate::Result<Response<B>> {
+    /// Creates a post middleware which can access [request info](./struct.RequestInfo.html) e.g. headers, method, uri etc. It should be used when the post middleware trandforms the response based on
+    /// the request information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, Middleware, PostMiddleware, RequestInfo};
+    /// use hyper::{Response, Body};
+    /// use std::convert::Infallible;
+    ///
+    /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
+    ///     let headers = req_info.headers();
+    ///     
+    ///     // Do some response transformation based on the request headers, method etc.
+    ///     
+    ///     Ok(res)
+    /// }
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      .middleware(Middleware::Post(PostMiddleware::new_with_info("/abc", post_middleware_with_info_handler).unwrap()))
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    pub fn new_with_info<P, H, R>(path: P, mut handler: H) -> crate::Result<PostMiddleware<B, E>>
+    where
+        P: Into<String>,
+        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Response<B>, E>> + Send + 'static,
+    {
+        let handler: HandlerWithInfo<B, E> =
+            Box::new(move |res: Response<B>, req_info: RequestInfo| Box::new(handler(res, req_info)));
+        PostMiddleware::new_with_boxed_handler(path, Handler::WithInfo(handler))
+    }
+
+    pub(crate) fn should_require_req_meta(&self) -> bool {
+        if let Some(ref handler) = self.handler {
+            match handler {
+                Handler::WithInfo(_) => true,
+                Handler::WithoutInfo(_) => false,
+            }
+        } else {
+            false
+        }
+    }
+
+    pub(crate) async fn process(
+        &mut self,
+        res: Response<B>,
+        req_info: Option<RequestInfo>,
+    ) -> crate::Result<Response<B>> {
         let handler = self
             .handler
             .as_mut()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(res)).await.wrap()
+        match handler {
+            Handler::WithoutInfo(ref mut handler) => Pin::from(handler(res)).await.wrap(),
+            Handler::WithInfo(ref mut handler) => {
+                Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
+                    .await
+                    .wrap()
+            }
+        }
     }
 }
 

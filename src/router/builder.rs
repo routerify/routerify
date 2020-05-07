@@ -1,8 +1,9 @@
 use crate::constants;
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
-use crate::router::ErrHandler;
 use crate::router::Router;
+use crate::router::{ErrHandler, ErrHandlerWithInfo, ErrHandlerWithoutInfo};
+use crate::types::RequestInfo;
 use hyper::{body::HttpBody, Method, Request, Response};
 use std::future::Future;
 
@@ -630,10 +631,30 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         H: FnMut(crate::Error) -> R + Send + Sync + 'static,
         R: Future<Output = Response<B>> + Send + 'static,
     {
-        let handler: ErrHandler<B> = Box::new(move |err: crate::Error| Box::new(handler(err)));
+        let handler: ErrHandlerWithoutInfo<B> = Box::new(move |err: crate::Error| Box::new(handler(err)));
 
         self.and_then(move |mut inner| {
-            inner.err_handler = Some(handler);
+            inner.err_handler = Some(ErrHandler::WithoutInfo(handler));
+            crate::Result::Ok(inner)
+        })
+    }
+
+    /// Adds a handler to handle any error raised by the routes or any middlewares.
+    ///
+    /// Here, the handler also access [request info](./struct.RequestInfo.html) e.g. headers, method, uri etc to generate response based on the request information.
+    ///
+    /// Please refer to [Error Handling](./index.html#error-handling) section
+    /// for more info.
+    pub fn err_handler_with_info<H, R>(self, mut handler: H) -> Self
+    where
+        H: FnMut(crate::Error, RequestInfo) -> R + Send + Sync + 'static,
+        R: Future<Output = Response<B>> + Send + 'static,
+    {
+        let handler: ErrHandlerWithInfo<B> =
+            Box::new(move |err: crate::Error, req_info: RequestInfo| Box::new(handler(err, req_info)));
+
+        self.and_then(move |mut inner| {
+            inner.err_handler = Some(ErrHandler::WithInfo(handler));
             crate::Result::Ok(inner)
         })
     }

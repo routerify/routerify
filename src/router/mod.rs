@@ -1,7 +1,7 @@
-use crate::helpers;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::prelude::*;
 use crate::route::Route;
+use crate::types::RequestInfo;
 use hyper::{body::HttpBody, Request, Response};
 use regex::RegexSet;
 use std::fmt::{self, Debug, Formatter};
@@ -12,8 +12,13 @@ pub use self::builder::RouterBuilder;
 
 mod builder;
 
-pub(crate) type ErrHandler<B> = Box<dyn FnMut(crate::Error) -> ErrHandlerReturn<B> + Send + Sync + 'static>;
-pub(crate) type ErrHandlerReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
+pub(crate) type ErrHandlerWithoutInfo<B> =
+    Box<dyn FnMut(crate::Error) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
+pub(crate) type ErrHandlerWithoutInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
+
+pub(crate) type ErrHandlerWithInfo<B> =
+    Box<dyn FnMut(crate::Error, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
+pub(crate) type ErrHandlerWithInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 /// Represents a modular, lightweight and mountable router type.
 ///
@@ -60,6 +65,25 @@ pub struct Router<B, E> {
 
     // We'll initialize it from the RouterService via Router::init_regex_set() method.
     regex_set: Option<RegexSet>,
+
+    // We'll initialize it from the RouterService via Router::init_req_info_gen() method.
+    pub(crate) should_gen_req_info: Option<bool>,
+}
+
+pub(crate) enum ErrHandler<B> {
+    WithoutInfo(ErrHandlerWithoutInfo<B>),
+    WithInfo(ErrHandlerWithInfo<B>),
+}
+
+impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
+    pub(crate) async fn execute(&mut self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
+        match self {
+            ErrHandler::WithoutInfo(ref mut err_handler) => Pin::from(err_handler(err)).await,
+            ErrHandler::WithInfo(ref mut err_handler) => {
+                Pin::from(err_handler(err, req_info.expect("No RequestInfo is provided"))).await
+            }
+        }
+    }
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Router<B, E> {
@@ -75,6 +99,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             post_middlewares,
             err_handler,
             regex_set: None,
+            should_gen_req_info: None,
         }
     }
 
@@ -91,17 +116,39 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Ok(())
     }
 
+    pub(crate) fn init_req_info_gen(&mut self) -> crate::Result<()> {
+        if let Some(ref err_handler) = self.err_handler {
+            if let ErrHandler::WithInfo(_) = err_handler {
+                self.should_gen_req_info = Some(true);
+                return Ok(());
+            }
+        }
+
+        for post_middleware in self.post_middlewares.iter() {
+            if post_middleware.should_require_req_meta() {
+                self.should_gen_req_info = Some(true);
+                return Ok(());
+            }
+        }
+
+        self.should_gen_req_info = Some(false);
+
+        Ok(())
+    }
+
     /// Return a [RouterBuilder](./struct.RouterBuilder.html) instance to build a `Router`.
     pub fn builder() -> RouterBuilder<B, E> {
         builder::RouterBuilder::new()
     }
 
-    pub(crate) async fn process(&mut self, req: Request<hyper::Body>) -> crate::Result<Response<B>> {
-        let target_path =
-            helpers::percent_decode_request_path(req.uri().path()).context("Couldn't percent decode request path")?;
-
+    pub(crate) async fn process(
+        &mut self,
+        target_path: &str,
+        req: Request<hyper::Body>,
+        req_info: Option<RequestInfo>,
+    ) -> crate::Result<Response<B>> {
         let (matched_pre_middleware_idxs, matched_route_idxs, matched_post_middleware_idxs) =
-            self.match_regex_set(target_path.as_str());
+            self.match_regex_set(target_path);
 
         let mut transformed_req = req;
         for idx in matched_pre_middleware_idxs {
@@ -119,7 +166,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
             if route.is_match_method(transformed_req.method()) {
                 let route_resp_res = route
-                    .process(target_path.as_str(), transformed_req)
+                    .process(target_path, transformed_req)
                     .await
                     .context("One of the routes couldn't process the request");
 
@@ -127,7 +174,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                     Ok(route_resp) => route_resp,
                     Err(err) => {
                         if let Some(ref mut err_handler) = self.err_handler {
-                            Pin::from(err_handler(err)).await
+                            err_handler.execute(err, req_info.clone()).await
                         } else {
                             return crate::Result::Err(err);
                         }
@@ -148,7 +195,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             let post_middleware = &mut self.post_middlewares[idx];
 
             transformed_res = post_middleware
-                .process(transformed_res)
+                .process(transformed_res, req_info.clone())
                 .await
                 .context("One of the post middlewares couldn't process the response")?;
         }
@@ -196,11 +243,12 @@ impl<B, E> Debug for Router<B, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{{ Pre-Middlewares: {:?}, Routes: {:?}, Post-Middlewares: {:?}, ErrHandler: {:?} }}",
+            "{{ Pre-Middlewares: {:?}, Routes: {:?}, Post-Middlewares: {:?}, ErrHandler: {:?}, ShouldGenReqInfo: {:?} }}",
             self.pre_middlewares,
             self.routes,
             self.post_middlewares,
-            self.err_handler.is_some()
+            self.err_handler.is_some(),
+            self.should_gen_req_info
         )
     }
 }

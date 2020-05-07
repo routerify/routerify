@@ -358,7 +358,7 @@
 //!
 //! ### Post Middleware
 //!
-//! The post Middlewares will be executed after all the route handlers process the request and generates a response and it will access that response object
+//! The post Middlewares will be executed after all the route handlers process the request and generates a response and it will access that response object and the request info(optional)
 //! and it can also do some changes to the response if required.
 //!
 //! Here is an example of a post middleware:
@@ -374,8 +374,7 @@
 //!     // Do some changes if required.
 //!     let transformed_res = res;
 //!
-//!     // Then return the transformed response object to be consumed by the other middlewares
-//!     // and the route handlers.
+//!     // Then return the transformed response object to be consumed by the other middlewares.
 //!     Ok(transformed_res)
 //! }
 //!
@@ -418,6 +417,42 @@
 //! # run();
 //! ```
 //!
+//! #### Post Middleware with Request Info
+//!
+//! Sometimes, the post middleware requires the request informations e.g. headers, method, uri etc to generate a new response. As an example, it could be used to manage
+//! sessions. To register this kind of post middleware, you have to use [`Middleware::post_with_info`](./enum.Middleware.html#method.post_with_info) method as follows:
+//!
+//! ```
+//! use routerify::{Router, Middleware, RequestInfo};
+//! use hyper::{Response, Body};
+//! use std::convert::Infallible;
+//!
+//! // The handler for a post middleware which requires request info.
+//! // It accepts `res` and `req_info` and it transforms the `res` and passes it to the next middlewares.
+//! async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
+//!     let transformed_res = res;
+//!
+//!     // Do some response transformation based on the request headers, method etc.
+//!     let _headers = req_info.headers();
+//!
+//!     // Then return the transformed response object to be consumed by the other middlewares.
+//!     Ok(transformed_res)
+//! }
+//!
+//! # fn run() -> Router<Body, Infallible> {
+//! let router = Router::builder()
+//!      // Create a post middleware instance by `Middleware::post_with_info` method
+//!      // and attach it.
+//!      .middleware(Middleware::post_with_info(post_middleware_with_info_handler))
+//!      // This middleware can also be attached on a specific path as shown below.
+//!      .middleware(Middleware::post_with_info_with_path("/my-path", post_middleware_with_info_handler).unwrap())
+//!      .build()
+//!      .unwrap();
+//! # router
+//! # }
+//! # run();
+//! ```
+//!
 //! ### The built-in Middlewars
 //!
 //! Here is a list of some middlewares which are published in different crates:
@@ -427,10 +462,10 @@
 //!
 //! ## Error Handling
 //!
-//! Any route or middlewares could go wrong and throws error. The `Routerify` tries to add a default error handler in some cases. But, it also
-//! allow to attach a custom error handler.
+//! Any route or middleware could go wrong and throws an error. The `Routerify` tries to add a default error handler in some cases. But, it also
+//! allow to attach a custom error handler. The error handler generates a response based on the error and the request info(optional).
 //!
-//! Here is an example:
+//! Here is an basic example:
 //!
 //! ```
 //! use routerify::{Router, Middleware};
@@ -457,6 +492,38 @@
 //! # }
 //! # run();
 //! ```
+//!
+//! ### Error Handling with Request Info
+//!
+//! Sometimes, it's needed to to generate response on error based on the request headers, method, uri etc. The `Routerify` also provides a method [`err_handler_with_info`](./struct.RouterBuilder.html#method.err_handler_with_info)
+//! to register this kind of error handler as follows:
+//!
+//! ```
+//! use routerify::{Router, Middleware, RequestInfo};
+//! use routerify::prelude::*;
+//! use hyper::{Response, Body, StatusCode};
+//!
+//! // The error handler will accept the thrown error and the request info and
+//! // it will generate a response.
+//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//!     // Now generate response based on the `err` and the `req_info`.
+//!     Response::builder()
+//!       .status(StatusCode::INTERNAL_SERVER_ERROR)
+//!       .body(Body::from("Something went wrong"))
+//!       .unwrap()
+//! }
+//!
+//! # fn run() -> Router<Body, hyper::Error> {
+//! let router = Router::builder()
+//!      .get("/users", |req| async move { Ok(Response::new(Body::from("It might raise an error"))) })
+//!      // Now register this error handler.
+//!      .err_handler_with_info(error_handler)
+//!      .build()
+//!      .unwrap();
+//! # router
+//! # }
+//! # run();
+//! ```
 
 pub use self::error::Error;
 #[doc(hidden)]
@@ -467,7 +534,7 @@ pub use self::router::{Router, RouterBuilder};
 #[doc(hidden)]
 pub use self::service::RequestService;
 pub use self::service::RouterService;
-pub use self::types::RouteParams;
+pub use self::types::{RequestInfo, RouteParams};
 
 mod constants;
 mod error;
