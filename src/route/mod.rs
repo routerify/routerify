@@ -8,8 +8,11 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
-type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
+type WsHandler<B, E> = Box<dyn Fn(Request<hyper::Body>) -> NormalHandlerReturn<B, E> + Send + Sync + 'static>;
+type NormalHandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
+
+type NormalHandler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> NormalHandlerReturn<B, E> + Send + Sync + 'static>;
+type NormalHandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// Represents a single route.
 ///
@@ -49,7 +52,7 @@ pub struct Route<B, E> {
     route_params: Vec<String>,
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
-    pub(crate) handler: Option<Handler<B, E>>,
+    pub(crate) handler: Option<NormalHandler<B, E>>,
     pub(crate) methods: Vec<Method>,
 }
 
@@ -57,7 +60,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         methods: Vec<Method>,
-        handler: Handler<B, E>,
+        handler: NormalHandler<B, E>,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
         let (re, params) = generate_exact_match_regex(path.as_str())
@@ -78,7 +81,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
-        let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
+        let handler: NormalHandler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
         Route::new_with_boxed_handler(path, methods, handler)
     }
 
@@ -98,7 +101,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .as_mut()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req)).await.wrap()
+        tokio::spawn(async { Pin::from(handler(req)).await.wrap() })
+            .await
+            .unwrap()
+
+        // Pin::from(handler(req)).await.wrap()
     }
 
     fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {

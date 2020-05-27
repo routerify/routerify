@@ -547,6 +547,8 @@ mod route;
 mod router;
 mod service;
 mod types;
+#[cfg(feature = "ws")]
+mod ws;
 
 /// A Result type often returned from methods that can have routerify errors.
 pub type Result<T> = std::result::Result<T, Error>;

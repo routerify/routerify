@@ -20,7 +20,7 @@ features = ["all"]
 [features]
 default = []
 all = ["ws"]
-ws = ["tokio-tungstenite"]
+ws = ["tokio-tungstenite", "headers", "futures", "tokio"]
 
 [dependencies]
 hyper = "0.13"
@@ -30,6 +30,9 @@ lazy_static = "1.4"
 percent-encoding = "2.1"
 
 tokio-tungstenite = { version = "0.10", default-features = false, optional = true }
+headers = { version = "0.3", optional = true }
+futures = { version = "0.3", default-features = false, optional = true }
+tokio = { version = "0.2", features = ["rt-core"],  optional = true}
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }
