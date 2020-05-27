@@ -46,7 +46,7 @@ impl<E: std::error::Error + Send + Sync + 'static> ErrorExt for E {
     }
 
     fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Error {
-        let msg = format!("{}: {}", self.to_string(), ctx);
+        let msg = format!("{}: {}", ctx, self.to_string());
         Error { msg }
     }
 }
