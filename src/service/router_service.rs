@@ -76,7 +76,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     /// method.
     pub fn new(mut router: Router<B, E>) -> crate::Result<RouterService<B, E>> {
         Self::init_router_with_x_powered_by_middleware(&mut router);
-        Self::init_router_with_keep_alive_middleware(&mut router);
+        // Self::init_router_with_keep_alive_middleware(&mut router);
 
         Self::init_router_with_global_options_route(&mut router);
         Self::init_router_with_default_404_route(&mut router);
@@ -102,16 +102,16 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         router.post_middlewares.push(x_powered_by_post_middleware);
     }
 
-    fn init_router_with_keep_alive_middleware(router: &mut Router<B, E>) {
-        let keep_alive_post_middleware = PostMiddleware::new("/*", |mut res| async move {
-            res.headers_mut()
-                .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
-            Ok(res)
-        })
-        .unwrap();
-
-        router.post_middlewares.push(keep_alive_post_middleware);
-    }
+    // fn init_router_with_keep_alive_middleware(router: &mut Router<B, E>) {
+    //     let keep_alive_post_middleware = PostMiddleware::new("/*", |mut res| async move {
+    //         res.headers_mut()
+    //             .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
+    //         Ok(res)
+    //     })
+    //     .unwrap();
+    //
+    //     router.post_middlewares.push(keep_alive_post_middleware);
+    // }
 
     fn init_router_with_global_options_route(router: &mut Router<B, E>) {
         let options_method = vec![Method::OPTIONS];
@@ -219,6 +219,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 
     fn call(&mut self, conn: &AddrStream) -> Self::Future {
+        println!("router service");
         let remote_addr = conn.remote_addr();
 
         let req_service = RequestService {

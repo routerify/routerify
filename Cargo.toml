@@ -11,12 +11,25 @@ readme = "README.md"
 license = "MIT"
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["all"]
+
+[features]
+default = []
+all = ["ws"]
+ws = ["tokio-tungstenite"]
+
 [dependencies]
 hyper = "0.13"
 http = "0.2"
 regex = "1.3"
 lazy_static = "1.4"
 percent-encoding = "2.1"
+
+tokio-tungstenite = { version = "0.10", default-features = false, optional = true }
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }
