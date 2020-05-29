@@ -537,6 +537,7 @@ pub use self::service::RouterService;
 pub use self::types::{RequestInfo, RouteParams};
 
 mod constants;
+mod data_map;
 mod error;
 pub mod ext;
 mod helpers;

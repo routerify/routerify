@@ -1,3 +1,4 @@
+use crate::data_map::SharedDataMap;
 use hyper::{Body, HeaderMap, Method, Request, Uri, Version};
 use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
@@ -8,11 +9,12 @@ use std::sync::Arc;
 /// for the [error handling](./index.html#error-handling-with-request-info);
 #[derive(Clone)]
 pub struct RequestInfo {
-    inner: Arc<RequestInfoInner>,
+    pub(crate) inner: Arc<RequestInfoInner>,
+    pub(crate) shared_data_map: Option<SharedDataMap>,
 }
 
-#[derive(Clone, Debug)]
-struct RequestInfoInner {
+#[derive(Debug)]
+pub(crate) struct RequestInfoInner {
     headers: HeaderMap,
     method: Method,
     uri: Uri,
@@ -28,7 +30,10 @@ impl RequestInfo {
             version: req.version(),
         };
 
-        RequestInfo { inner: Arc::new(inner) }
+        RequestInfo {
+            inner: Arc::new(inner),
+            shared_data_map: None,
+        }
     }
 
     /// Returns the request headers.
@@ -49,6 +54,12 @@ impl RequestInfo {
     /// Returns the request's HTTP version.
     pub fn version(&self) -> Version {
         self.inner.version
+    }
+
+    pub fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        self.shared_data_map
+            .as_ref()
+            .and_then(|data_map| data_map.inner.get::<T>())
     }
 }
 

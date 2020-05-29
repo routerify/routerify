@@ -43,20 +43,20 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             let target_path = helpers::percent_decode_request_path(req.uri().path())
                 .context("Couldn't percent decode request path")?;
 
-            let mut req_meta = None;
-            let should_gen_req_meta = router
+            let mut req_info = None;
+            let should_gen_req_info = router
                 .should_gen_req_info
-                .expect("The `should_gen_req_meta` flag in Router is not initialized");
+                .expect("The `should_gen_req_info` flag in Router is not initialized");
 
-            if should_gen_req_meta {
-                req_meta = Some(RequestInfo::new_from_req(&req));
+            if should_gen_req_info {
+                req_info = Some(RequestInfo::new_from_req(&req));
             }
 
-            match router.process(target_path.as_str(), req, req_meta.clone()).await {
+            match router.process(target_path.as_str(), req, req_info.clone()).await {
                 Ok(resp) => crate::Result::Ok(resp),
                 Err(err) => {
                     if let Some(ref mut err_handler) = router.err_handler {
-                        crate::Result::Ok(err_handler.execute(err, req_meta.clone()).await)
+                        crate::Result::Ok(err_handler.execute(err, req_info.clone()).await)
                     } else {
                         crate::Result::Err(err)
                     }

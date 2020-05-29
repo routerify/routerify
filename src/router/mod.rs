@@ -1,3 +1,4 @@
+use crate::data_map::{DataMap, SharedDataMap};
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::prelude::*;
 use crate::route::Route;
@@ -7,6 +8,7 @@ use regex::RegexSet;
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 pub use self::builder::RouterBuilder;
 
@@ -68,6 +70,9 @@ pub struct Router<B, E> {
 
     // We'll initialize it from the RouterService via Router::init_req_info_gen() method.
     pub(crate) should_gen_req_info: Option<bool>,
+
+    // Data map could not be used at all, so don't allocate memory unnecessarily.
+    shared_data_map: Option<SharedDataMap>,
 }
 
 pub(crate) enum ErrHandler<B> {
@@ -92,6 +97,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         routes: Vec<Route<B, E>>,
         post_middlewares: Vec<PostMiddleware<B, E>>,
         err_handler: Option<ErrHandler<B>>,
+        data_map: Option<DataMap>,
     ) -> Self {
         Router {
             pre_middlewares,
@@ -100,6 +106,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             err_handler,
             regex_set: None,
             should_gen_req_info: None,
+            shared_data_map: data_map.map(|d| SharedDataMap::new(Arc::new(d))),
         }
     }
 
@@ -144,9 +151,18 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     pub(crate) async fn process(
         &mut self,
         target_path: &str,
-        req: Request<hyper::Body>,
-        req_info: Option<RequestInfo>,
+        mut req: Request<hyper::Body>,
+        mut req_info: Option<RequestInfo>,
     ) -> crate::Result<Response<B>> {
+        if let Some(ref shared_data_map) = self.shared_data_map {
+            let ext = req.extensions_mut();
+            ext.insert(shared_data_map.clone());
+
+            if let Some(ref mut req_info) = req_info {
+                req_info.shared_data_map.replace(shared_data_map.clone());
+            }
+        }
+
         let (matched_pre_middleware_idxs, matched_route_idxs, matched_post_middleware_idxs) =
             self.match_regex_set(target_path);
 
