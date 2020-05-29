@@ -10,7 +10,6 @@ Run an example:
  cargo run --example example_name
 ```
 
-
 * [`simple_example`](simple_example.rs) - A basic example using `Routerify`.
 
 * [`error_handling`](error_handling.rs) - Shows how to handle any error in `Routerify`.
