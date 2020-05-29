@@ -20,6 +20,8 @@ Run an example:
 
 * [`middleware`](middleware.rs) - Shows how to use and define a pre middleware and a post middleware.
 
+* [`share_data_and_state`](share_data_and_state.rs) - Shows how to share app data and state across route handlers, middlewares and the error handler.
+
 * [`route_parameters`](route_parameters.rs) - An example on how to use route parameters and how to extract them.
 
 * [`scoped_router`](scoped_router.rs) - Shows how to write modular routing logic by mounting a router on another router.

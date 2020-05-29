@@ -56,6 +56,10 @@ impl RequestInfo {
         self.inner.version
     }
 
+    /// Access data which was shared by the [`RouterBuilder`](./struct.RouterBuilder.html) method
+    /// [`data`](./struct.RouterBuilder.html#method.data).
+    ///
+    /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
     pub fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
         self.shared_data_map
             .as_ref()

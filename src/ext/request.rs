@@ -83,6 +83,10 @@ pub trait RequestExt {
     /// ```
     fn remote_addr(&self) -> SocketAddr;
 
+    /// Access data which was shared by the [`RouterBuilder`](../struct.RouterBuilder.html) method
+    /// [`data`](../struct.RouterBuilder.html#method.data).
+    ///
+    /// Please refer to the [Data and State Sharing](../index.html#data-and-state-sharing) for more info.
     fn data<T: Send + Sync + 'static>(&self) -> Option<&T>;
 }
 

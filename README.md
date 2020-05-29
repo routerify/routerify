@@ -28,7 +28,10 @@ The `Routerify` offers the following features:
 - 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.3.7/regex/struct.RegexSet.html) to match routes. 
 - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
 - ❗ Provides a flexible error handling strategy.
+- 💁 Provides `WebSocket` [support](https://github.com/routerify/routerify-websocket) out of the box.
+- 🔥 Allows data/state sharing across the route and middleware handlers.
 - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
+
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
 
@@ -60,21 +63,28 @@ routerify = "1.1"
 A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
 
 ```rust
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, Request, Response, Server, StatusCode};
 // Import the routerify prelude traits.
 use routerify::prelude::*;
-use routerify::{Middleware, Router, RouterService};
+use routerify::{Middleware, Router, RouterService, RequestInfo};
 use std::{convert::Infallible, net::SocketAddr};
 
-// A handler for "/:name" page.
+// Define an app state to share it across the route handlers and middlewares.
+struct State(u64);
+
+// A handler for "/" page.
 async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let name = req.param("name").unwrap();
-    Ok(Response::new(Body::from(format!("Hello {}", name))))
+    // Access the app state.
+    let state = req.data::<State>().unwrap();
+    println!("State value: {}", state.0);
+
+    Ok(Response::new(Body::from("Home page")))
 }
 
-// A handler for "/about" page.
-async fn about_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new(Body::from("About page")))
+// A handler for "/users/:userId" page.
+async fn user_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let user_id = req.param("userId").unwrap();
+    Ok(Response::new(Body::from(format!("Hello {}", user_id))))
 }
 
 // A middleware which logs an http request.
@@ -83,15 +93,30 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     Ok(req)
 }
 
-// Create a `Router<Body, Infallible>` for response body type `hyper::Body` and for handler error type `Infallible`.
+// Define an error handler function which will accept the `routerify::Error`
+// and the request information and generates an appropriate response.
+async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+    eprintln!("{}", err);
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::from(format!("Something went wrong: {}", err)))
+        .unwrap()
+}
+
+// Create a `Router<Body, Infallible>` for response body type `hyper::Body`
+// and for handler error type `Infallible`.
 fn router() -> Router<Body, Infallible> {
     // Create a router and specify the logger middleware and the handlers.
     // Here, "Middleware::pre" means we're adding a pre middleware which will be executed
     // before any route handlers.
     Router::builder()
+        // Specify the state data which will be available to every route handlers,
+        // error handler and middlewares.
+        .data(State(100))
         .middleware(Middleware::pre(logger))
-        .get("/:name", home_handler)
-        .get("/about", about_handler)
+        .get("/", home_handler)
+        .get("/users/:userId", user_handler)
+        .err_handler_with_info(error_handler)
         .build()
         .unwrap()
 }

@@ -11,6 +11,16 @@ readme = "README.md"
 license = "MIT"
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["all"]
+
+[features]
+default = []
+all = []
+
 [dependencies]
 hyper = "0.13"
 http = "0.2"

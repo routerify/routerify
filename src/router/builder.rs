@@ -666,7 +666,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
     RouterBuilder<B, E>
 {
-    /// Add application data to router
+    /// Specify app data to be shared across route handlers, middlewares and the error handler.
+    ///
+    /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
     pub fn data<T: Send + Sync + 'static>(self, data: T) -> Self {
         self.and_then(move |mut inner| {
             let mut data_map = inner.data_map.take().unwrap_or_else(|| DataMap::new());
