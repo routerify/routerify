@@ -1,4 +1,5 @@
 use crate::constants;
+use crate::data_map::DataMap;
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
@@ -56,6 +57,7 @@ struct BuilderInner<B, E> {
     routes: Vec<Route<B, E>>,
     post_middlewares: Vec<PostMiddleware<B, E>>,
     err_handler: Option<ErrHandler<B>>,
+    data_map: Option<DataMap>,
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
@@ -74,6 +76,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                 inner.routes,
                 inner.post_middlewares,
                 inner.err_handler,
+                inner.data_map,
             )
         })
     }
@@ -660,6 +663,22 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 }
 
+impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
+    RouterBuilder<B, E>
+{
+    /// Specify app data to be shared across route handlers, middlewares and the error handler.
+    ///
+    /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
+    pub fn data<T: Send + Sync + 'static>(self, data: T) -> Self {
+        self.and_then(move |mut inner| {
+            let mut data_map = inner.data_map.take().unwrap_or_else(|| DataMap::new());
+            data_map.insert(data);
+            inner.data_map.replace(data_map);
+            crate::Result::Ok(inner)
+        })
+    }
+}
+
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Default
     for RouterBuilder<B, E>
 {
@@ -670,6 +689,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                 routes: Vec::new(),
                 post_middlewares: Vec::new(),
                 err_handler: None,
+                data_map: None,
             }),
         }
     }

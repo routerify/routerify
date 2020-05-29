@@ -1,3 +1,4 @@
+use crate::data_map::SharedDataMap;
 use crate::types::{RequestMeta, RouteParams};
 use hyper::Request;
 use std::net::SocketAddr;
@@ -81,6 +82,12 @@ pub trait RequestExt {
     /// # run();
     /// ```
     fn remote_addr(&self) -> SocketAddr;
+
+    /// Access data which was shared by the [`RouterBuilder`](../struct.RouterBuilder.html) method
+    /// [`data`](../struct.RouterBuilder.html#method.data).
+    ///
+    /// Please refer to the [Data and State Sharing](../index.html#data-and-state-sharing) for more info.
+    fn data<T: Send + Sync + 'static>(&self) -> Option<&T>;
 }
 
 impl RequestExt for Request<hyper::Body> {
@@ -101,5 +108,11 @@ impl RequestExt for Request<hyper::Body> {
             .and_then(|meta| meta.remote_addr())
             .copied()
             .expect("Routerify: No remote address added while processing request")
+    }
+
+    fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        self.extensions()
+            .get::<SharedDataMap>()
+            .and_then(|data_map| data_map.inner.get::<T>())
     }
 }

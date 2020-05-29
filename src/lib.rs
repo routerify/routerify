@@ -18,6 +18,10 @@
 //!
 //! - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
 //!
+//! - 💁 Provides `WebSocket` [support](https://github.com/routerify/routerify-websocket) out of the box.
+//!
+//! - 🔥 Allows data/state sharing across the route and middleware handlers.
+//!
 //! - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
 //!
 //! To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/),
@@ -42,21 +46,28 @@
 //! A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
 //!
 //! ```no_run
-//! use hyper::{Body, Request, Response, Server};
+//! use hyper::{Body, Request, Response, Server, StatusCode};
 //! // Import the routerify prelude traits.
 //! use routerify::prelude::*;
-//! use routerify::{Middleware, Router, RouterService};
+//! use routerify::{Middleware, Router, RouterService, RequestInfo};
 //! use std::{convert::Infallible, net::SocketAddr};
 //!
-//! // A handler for "/:name" page.
+//! // Define an app state to share it across the route handlers and middlewares.
+//! struct State(u64);
+//!
+//! // A handler for "/" page.
 //! async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-//!     let name = req.param("name").unwrap();
-//!     Ok(Response::new(Body::from(format!("Hello {}", name))))
+//!     // Access the app state.
+//!     let state = req.data::<State>().unwrap();
+//!     println!("State value: {}", state.0);
+//!
+//!     Ok(Response::new(Body::from("Home page")))
 //! }
 //!
-//! // A handler for "/about" page.
-//! async fn about_handler(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-//!     Ok(Response::new(Body::from("About page")))
+//! // A handler for "/users/:userId" page.
+//! async fn user_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+//!     let user_id = req.param("userId").unwrap();
+//!     Ok(Response::new(Body::from(format!("Hello {}", user_id))))
 //! }
 //!
 //! // A middleware which logs an http request.
@@ -65,15 +76,30 @@
 //!     Ok(req)
 //! }
 //!
-//! // Create a `Router<Body, Infallible>` for response body type `hyper::Body` and for handler error type `Infallible`.
+//! // Define an error handler function which will accept the `routerify::Error`
+//! // and the request information and generates an appropriate response.
+//! async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+//!     eprintln!("{}", err);
+//!     Response::builder()
+//!         .status(StatusCode::INTERNAL_SERVER_ERROR)
+//!         .body(Body::from(format!("Something went wrong: {}", err)))
+//!         .unwrap()
+//! }
+//!
+//! // Create a `Router<Body, Infallible>` for response body type `hyper::Body`
+//! // and for handler error type `Infallible`.
 //! fn router() -> Router<Body, Infallible> {
 //!     // Create a router and specify the logger middleware and the handlers.
 //!     // Here, "Middleware::pre" means we're adding a pre middleware which will be executed
 //!     // before any route handlers.
 //!     Router::builder()
+//!         // Specify the state data which will be available to every route handlers,
+//!         // error handler and middlewares.
+//!         .data(State(100))
 //!         .middleware(Middleware::pre(logger))
-//!         .get("/:name", home_handler)
-//!         .get("/about", about_handler)
+//!         .get("/", home_handler)
+//!         .get("/users/:userId", user_handler)
+//!         .err_handler_with_info(error_handler)
 //!         .build()
 //!         .unwrap()
 //! }
@@ -460,6 +486,169 @@
 //! - [routerify-cors](https://github.com/routerify/routerify-cors): A post middleware which enables `CORS` to the routes.
 //! - [routerify-query](https://github.com/routerify/routerify-query): A pre middleware which parses the request query string.
 //!
+//! ## Data and State Sharing
+//!
+//! The `Routerify` also allows you to share data or app state across the route handlers, middlewares and the error handler via the [`RouterBuilder`](./struct.RouterBuilder.html) method
+//! [`data`](./struct.RouterBuilder.html#method.data).
+//!
+//! Here is an example to share app state:
+//!
+//! ```
+//! # use hyper::{Body, Request, Response, Server, StatusCode};
+//! // Import the routerify prelude traits.
+//! use routerify::prelude::*;
+//! use routerify::{Middleware, Router, RouterService, RequestInfo};
+//! # use std::{convert::Infallible, net::SocketAddr};
+//!
+//! // Define an app state to share it across the route handlers, middlewares
+//! // and the error handler.
+//! struct State(u64);
+//!
+//! // A handler for "/" page.
+//! async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+//!     // Access the app state.
+//!     let state = req.data::<State>().unwrap();
+//!     println!("State value: {}", state.0);
+//!
+//!     Ok(Response::new(Body::from("Home page")))
+//! }
+//!
+//! // A middleware which logs an http request.
+//! async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
+//!     // You can also access the same state from middleware.
+//!     let state = req.data::<State>().unwrap();
+//!     println!("State value: {}", state.0);
+//!
+//!     println!("{} {} {}", req.remote_addr(), req.method(), req.uri().path());
+//!     Ok(req)
+//! }
+//!
+//! // Define an error handler function which will accept the `routerify::Error`
+//! // and the request information and generates an appropriate response.
+//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//!     // You can also access the same state from error handler.
+//!     let state = req_info.data::<State>().unwrap();
+//!     println!("State value: {}", state.0);
+//!
+//!     eprintln!("{}", err);
+//!     Response::builder()
+//!         .status(StatusCode::INTERNAL_SERVER_ERROR)
+//!         .body(Body::from(format!("Something went wrong: {}", err)))
+//!         .unwrap()
+//! }
+//!
+//! // Create a `Router<Body, Infallible>` for response body type `hyper::Body`
+//! // and for handler error type `Infallible`.
+//! fn router() -> Router<Body, Infallible> {
+//!     Router::builder()
+//!         // Specify the state data which will be available to every route handlers,
+//!         // error handler and middlewares.
+//!         .data(State(100))
+//!         .middleware(Middleware::pre(logger))
+//!         .get("/", home_handler)
+//!         .err_handler_with_info(error_handler)
+//!         .build()
+//!         .unwrap()
+//! }
+//!
+//! # #[tokio::main]
+//! # async fn run() {
+//! #    let router = router();
+//! #
+//! #    // Create a Service from the router above to handle incoming requests.
+//! #    let service = RouterService::new(router).unwrap();
+//! #
+//! #   // The address on which the server will be listening.
+//! #   let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+//! #
+//! #   // Create a server by passing the created service to `.serve` method.
+//! #   let server = Server::bind(&addr).serve(service);
+//! #
+//! #   println!("App is running on: {}", addr);
+//! #   if let Err(err) = server.await {
+//! #       eprintln!("Server error: {}", err);
+//! #  }
+//! # }
+//! ```
+//!
+//! Here is an example to `mutate` app state:
+//!
+//! ```
+//! # use hyper::{Body, Request, Response, Server, StatusCode};
+//! // Import the routerify prelude traits.
+//! use routerify::prelude::*;
+//! use routerify::{Middleware, Router, RouterService, RequestInfo};
+//! # use std::{convert::Infallible, net::SocketAddr};
+//! use std::sync::Mutex;
+//!
+//! // Define an app state to share it across the route handlers, middlewares
+//! // and the error handler.
+//! struct State(u64);
+//!
+//! // A handler for "/" page.
+//! async fn home_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+//!     // Access the app state.
+//!     let state = req.data::<Mutex<State>>().unwrap();
+//!     let mut lock = state.lock().unwrap();
+//!     // Mutate the app state if needed.
+//!     lock.0 += 1;
+//!
+//!     println!("Updated State value: {}", lock.0);
+//!
+//!     Ok(Response::new(Body::from("Home page")))
+//! }
+//!
+//! // Create a `Router<Body, Infallible>` for response body type `hyper::Body`
+//! // and for handler error type `Infallible`.
+//! fn router() -> Router<Body, Infallible> {
+//!     Router::builder()
+//!         // Specify the state data which will be available to every route handlers,
+//!         // error handler and middlewares.
+//!         .data(Mutex::new(State(100)))
+//!         .get("/", home_handler)
+//!         .build()
+//!         .unwrap()
+//! }
+//!
+//! # #[tokio::main]
+//! # async fn run() {
+//! #    let router = router();
+//! #
+//! #    // Create a Service from the router above to handle incoming requests.
+//! #    let service = RouterService::new(router).unwrap();
+//! #
+//! #   // The address on which the server will be listening.
+//! #   let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+//! #
+//! #   // Create a server by passing the created service to `.serve` method.
+//! #   let server = Server::bind(&addr).serve(service);
+//! #
+//! #   println!("App is running on: {}", addr);
+//! #   if let Err(err) = server.await {
+//! #       eprintln!("Server error: {}", err);
+//! #  }
+//! # }
+//! ```
+//!
+//! You can also share multiple data as follows:
+//!
+//! ```
+//! # use hyper::{Body, Request, Response, Server, StatusCode};
+//! # // Import the routerify prelude traits.
+//! # use routerify::prelude::*;
+//! # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//! # use std::{convert::Infallible, net::SocketAddr};
+//! # use std::sync::Mutex;
+//! fn router() -> Router<Body, Infallible> {
+//!     Router::builder()
+//!         // Share multiple data, a single data for each data type.
+//!         .data(100_u32)
+//!         .data(String::from("Hello world"))
+//!         .build()
+//!         .unwrap()
+//! }
+//! ```
+//!
 //! ## Error Handling
 //!
 //! Any route or middleware could go wrong and throws an error. The `Routerify` tries to add a default error handler in some cases. But, it also
@@ -537,6 +726,7 @@ pub use self::service::RouterService;
 pub use self::types::{RequestInfo, RouteParams};
 
 mod constants;
+mod data_map;
 mod error;
 pub mod ext;
 mod helpers;
