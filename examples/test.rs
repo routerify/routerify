@@ -35,6 +35,9 @@ mod offers {
 
     async fn list(req: Request<Body>) -> Result<Response<Body>, io::Error> {
         let count = req.data::<State>().unwrap().count.lock().unwrap();
+
+        println!("I can also access parent state: {:?}", req.data::<String>().unwrap());
+
         Ok(Response::new(Body::from(format!("Suppliers: {}", count))))
     }
 
@@ -49,6 +52,7 @@ mod offers {
 #[tokio::main]
 async fn main() {
     let scopes = Router::builder()
+        .data("Parent State data".to_owned())
         .scope("/offers", offers::router())
         .scope("/users", users::router())
         .build()
