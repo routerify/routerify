@@ -1,3 +1,4 @@
+use crate::constants;
 use crate::helpers;
 use crate::prelude::*;
 use crate::router::Router;
@@ -40,8 +41,12 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         let fut = async move {
             helpers::update_req_meta_in_extensions(req.extensions_mut(), RequestMeta::with_remote_addr(remote_addr));
 
-            let target_path = helpers::percent_decode_request_path(req.uri().path())
+            let mut target_path = helpers::percent_decode_request_path(req.uri().path())
                 .context("Couldn't percent decode request path")?;
+
+            if target_path.as_bytes()[target_path.len() - 1] != b'/' {
+                target_path.push_str("/");
+            }
 
             let mut req_info = None;
             let should_gen_req_info = router

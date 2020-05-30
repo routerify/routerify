@@ -507,8 +507,15 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         self.and_then(move |mut inner| {
+            let mut path = path.into();
+
+            if !path.ends_with("/") && !path.ends_with("*") {
+                path.push_str("/");
+            }
+
             let route = Route::new(path, methods, handler)?;
             inner.routes.push(route);
+
             crate::Result::Ok(inner)
         })
     }

@@ -37,7 +37,11 @@ async fn my_custom_header_adder_middleware(mut res: Response<Body>) -> Result<Re
 // accesses request information and adds the session cookies to manage session.
 async fn my_session_middleware(mut res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, io::Error> {
     // Access a cookie.
-    let cookie = req_info.headers().get(header::COOKIE).unwrap().to_str().unwrap();
+    let cookie = req_info
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
 
     res.headers_mut()
         .insert(header::SET_COOKIE, HeaderValue::from_str(cookie).unwrap());

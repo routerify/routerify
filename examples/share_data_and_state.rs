@@ -63,7 +63,7 @@ async fn main() {
     let service = RouterService::new(router).unwrap();
 
     // The address on which the server will be listening.
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
 
     // Create a server by passing the created service to `.serve` method.
     let server = Server::bind(&addr).serve(service);

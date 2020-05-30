@@ -45,7 +45,7 @@ mod offers {
         let state = State {
             count: Arc::new(Mutex::new(100)),
         };
-        Router::builder().data(state).get("/", list).build().unwrap()
+        Router::builder().data(state).get("/abc", list).build().unwrap()
     }
 }
 
@@ -59,6 +59,7 @@ async fn main() {
         .unwrap();
 
     let router = Router::builder().scope("/v1", scopes).build().unwrap();
+    dbg!(&router);
 
     let service = RouterService::new(router).unwrap();
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
