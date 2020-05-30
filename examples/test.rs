@@ -57,10 +57,9 @@ async fn main() {
         .scope("/users", users::router())
         .build()
         .unwrap();
+
     let router = Router::builder().scope("/v1", scopes).build().unwrap();
-    // API Tree:
-    //   /v1/users/ -> users::list   // returns 20
-    //   /v1/offers/ -> offers::list // returns 100
+
     let service = RouterService::new(router).unwrap();
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
     let server = Server::bind(&addr).serve(service);
