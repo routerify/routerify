@@ -1,4 +1,4 @@
-//! The `Routerify` provides a lightweight and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
+//! The `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
 //!
 //! There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
 //! is one of them, and it provides only low level APIs. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
@@ -489,7 +489,7 @@
 //! ## Data and State Sharing
 //!
 //! The `Routerify` also allows you to share data or app state across the route handlers, middlewares and the error handler via the [`RouterBuilder`](./struct.RouterBuilder.html) method
-//! [`data`](./struct.RouterBuilder.html#method.data).
+//! [`data`](./struct.RouterBuilder.html#method.data). As it provides composable router API, it also allows to have app state/data per each sub-router.
 //!
 //! Here is an example to share app state:
 //!
@@ -628,6 +628,52 @@
 //! #       eprintln!("Server error: {}", err);
 //! #  }
 //! # }
+//! ```
+//!
+//! Here is any example on having app state per each sub-router:
+//!
+//! ```
+//! # use hyper::{Body, Request, Response, Server, StatusCode};
+//! # // Import the routerify prelude traits.
+//! # use routerify::prelude::*;
+//! # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//! # use std::{convert::Infallible, net::SocketAddr};
+//!
+//! mod foo {
+//!     # use std::{convert::Infallible, net::SocketAddr};
+//!     # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//!     # use hyper::{Body, Request, Response, Server, StatusCode};
+//!     pub fn router() -> Router<Body, Infallible> {
+//!         Router::builder()
+//!             // Specify data for this sub-router only.
+//!             .data("Data for foo router")
+//!             .build()
+//!             .unwrap()
+//!     }
+//! }
+//!
+//! mod bar {
+//!     # use std::{convert::Infallible, net::SocketAddr};
+//!     # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//!     # use hyper::{Body, Request, Response, Server, StatusCode};
+//!     pub fn router() -> Router<Body, Infallible> {
+//!         Router::builder()
+//!             // Specify data for this sub-router only.
+//!             .data("Data for bar router")
+//!             .build()
+//!             .unwrap()
+//!     }
+//! }
+//!
+//! fn router() -> Router<Body, Infallible> {
+//!     Router::builder()
+//!         // This data will be available to all the child sub-routers.
+//!         .data(100_u32)
+//!         .scope("/foo", foo::router())
+//!         .scope("/bar", bar::router())
+//!         .build()
+//!         .unwrap()
+//! }
 //! ```
 //!
 //! You can also share multiple data as follows:

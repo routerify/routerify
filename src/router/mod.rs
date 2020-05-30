@@ -1,4 +1,4 @@
-use crate::data_map::{DataMap, SharedDataMap};
+use crate::data_map::ScopedDataMap;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::prelude::*;
 use crate::route::Route;
@@ -8,7 +8,6 @@ use regex::RegexSet;
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 
 pub use self::builder::RouterBuilder;
 
@@ -61,6 +60,8 @@ pub struct Router<B, E> {
     pub(crate) pre_middlewares: Vec<PreMiddleware<E>>,
     pub(crate) routes: Vec<Route<B, E>>,
     pub(crate) post_middlewares: Vec<PostMiddleware<B, E>>,
+    pub(crate) scoped_data_maps: Vec<ScopedDataMap>,
+
     // This handler should be added only on root Router.
     // Any error handler attached to scoped router will be ignored.
     pub(crate) err_handler: Option<ErrHandler<B>>,
@@ -70,9 +71,6 @@ pub struct Router<B, E> {
 
     // We'll initialize it from the RouterService via Router::init_req_info_gen() method.
     pub(crate) should_gen_req_info: Option<bool>,
-
-    // Data map could not be used at all, so don't allocate memory unnecessarily.
-    shared_data_map: Option<SharedDataMap>,
 }
 
 pub(crate) enum ErrHandler<B> {
@@ -96,17 +94,17 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         pre_middlewares: Vec<PreMiddleware<E>>,
         routes: Vec<Route<B, E>>,
         post_middlewares: Vec<PostMiddleware<B, E>>,
+        scoped_data_maps: Vec<ScopedDataMap>,
         err_handler: Option<ErrHandler<B>>,
-        data_map: Option<DataMap>,
     ) -> Self {
         Router {
             pre_middlewares,
             routes,
             post_middlewares,
+            scoped_data_maps,
             err_handler,
             regex_set: None,
             should_gen_req_info: None,
-            shared_data_map: data_map.map(|d| SharedDataMap::new(Arc::new(d))),
         }
     }
 
@@ -116,7 +114,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .iter()
             .map(|m| m.regex.as_str())
             .chain(self.routes.iter().map(|r| r.regex.as_str()))
-            .chain(self.post_middlewares.iter().map(|m| m.regex.as_str()));
+            .chain(self.post_middlewares.iter().map(|m| m.regex.as_str()))
+            .chain(self.scoped_data_maps.iter().map(|d| d.regex.as_str()));
 
         self.regex_set = Some(RegexSet::new(regex_iter).context("Couldn't create router RegexSet")?);
 
@@ -154,17 +153,26 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         mut req: Request<hyper::Body>,
         mut req_info: Option<RequestInfo>,
     ) -> crate::Result<Response<B>> {
-        if let Some(ref shared_data_map) = self.shared_data_map {
-            let ext = req.extensions_mut();
-            ext.insert(shared_data_map.clone());
+        let (
+            matched_pre_middleware_idxs,
+            matched_route_idxs,
+            matched_post_middleware_idxs,
+            matched_scoped_data_map_idxs,
+        ) = self.match_regex_set(target_path);
 
-            if let Some(ref mut req_info) = req_info {
-                req_info.shared_data_map.replace(shared_data_map.clone());
+        let shared_data_maps = matched_scoped_data_map_idxs
+            .into_iter()
+            .map(|idx| self.scoped_data_maps[idx].clone_data_map())
+            .collect::<Vec<_>>();
+
+        if let Some(ref mut req_info) = req_info {
+            if shared_data_maps.len() > 0 {
+                req_info.shared_data_maps.replace(Box::new(shared_data_maps.clone()));
             }
         }
 
-        let (matched_pre_middleware_idxs, matched_route_idxs, matched_post_middleware_idxs) =
-            self.match_regex_set(target_path);
+        let ext = req.extensions_mut();
+        ext.insert(shared_data_maps);
 
         let mut transformed_req = req;
         for idx in matched_pre_middleware_idxs {
@@ -219,7 +227,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Ok(transformed_res)
     }
 
-    fn match_regex_set(&self, target_path: &str) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
+    fn match_regex_set(&self, target_path: &str) -> (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>) {
         let matches = self
             .regex_set
             .as_ref()
@@ -230,10 +238,12 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         let pre_middlewares_len = self.pre_middlewares.len();
         let routes_len = self.routes.len();
         let post_middlewares_len = self.post_middlewares.len();
+        let scoped_data_maps_len = self.scoped_data_maps.len();
 
         let mut matched_pre_middleware_idxs = Vec::new();
         let mut matched_route_idxs = Vec::new();
         let mut matched_post_middleware_idxs = Vec::new();
+        let mut matched_scoped_data_map_idxs = Vec::new();
 
         for idx in matches {
             if idx < pre_middlewares_len {
@@ -244,6 +254,10 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                 && idx < (pre_middlewares_len + routes_len + post_middlewares_len)
             {
                 matched_post_middleware_idxs.push(idx - pre_middlewares_len - routes_len);
+            } else if idx >= (pre_middlewares_len + routes_len + post_middlewares_len)
+                && idx < (pre_middlewares_len + routes_len + post_middlewares_len + scoped_data_maps_len)
+            {
+                matched_scoped_data_map_idxs.push(idx - pre_middlewares_len - routes_len - post_middlewares_len);
             }
         }
 
@@ -251,6 +265,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             matched_pre_middleware_idxs,
             matched_route_idxs,
             matched_post_middleware_idxs,
+            matched_scoped_data_map_idxs,
         )
     }
 }
@@ -259,10 +274,11 @@ impl<B, E> Debug for Router<B, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{{ Pre-Middlewares: {:?}, Routes: {:?}, Post-Middlewares: {:?}, ErrHandler: {:?}, ShouldGenReqInfo: {:?} }}",
+            "{{ Pre-Middlewares: {:?}, Routes: {:?}, Post-Middlewares: {:?}, ScopedDataMaps: {:?}, ErrHandler: {:?}, ShouldGenReqInfo: {:?} }}",
             self.pre_middlewares,
             self.routes,
             self.post_middlewares,
+            self.scoped_data_maps,
             self.err_handler.is_some(),
             self.should_gen_req_info
         )

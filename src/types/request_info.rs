@@ -9,8 +9,8 @@ use std::sync::Arc;
 /// for the [error handling](./index.html#error-handling-with-request-info);
 #[derive(Clone)]
 pub struct RequestInfo {
-    pub(crate) inner: Arc<RequestInfoInner>,
-    pub(crate) shared_data_map: Option<SharedDataMap>,
+    pub(crate) req_info_inner: Arc<RequestInfoInner>,
+    pub(crate) shared_data_maps: Option<Box<Vec<SharedDataMap>>>,
 }
 
 #[derive(Debug)]
@@ -31,29 +31,29 @@ impl RequestInfo {
         };
 
         RequestInfo {
-            inner: Arc::new(inner),
-            shared_data_map: None,
+            req_info_inner: Arc::new(inner),
+            shared_data_maps: None,
         }
     }
 
     /// Returns the request headers.
     pub fn headers(&self) -> &HeaderMap {
-        &self.inner.headers
+        &self.req_info_inner.headers
     }
 
     /// Returns the request method type.
     pub fn method(&self) -> &Method {
-        &self.inner.method
+        &self.req_info_inner.method
     }
 
     /// Returns the request uri.
     pub fn uri(&self) -> &Uri {
-        &self.inner.uri
+        &self.req_info_inner.uri
     }
 
     /// Returns the request's HTTP version.
     pub fn version(&self) -> Version {
-        self.inner.version
+        self.req_info_inner.version
     }
 
     /// Access data which was shared by the [`RouterBuilder`](./struct.RouterBuilder.html) method
@@ -61,14 +61,20 @@ impl RequestInfo {
     ///
     /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
     pub fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        self.shared_data_map
-            .as_ref()
-            .and_then(|data_map| data_map.inner.get::<T>())
+        if let Some(ref shared_data_maps) = self.shared_data_maps {
+            for shared_data_map in shared_data_maps.iter() {
+                if let Some(data) = shared_data_map.inner.get::<T>() {
+                    return Some(data);
+                }
+            }
+        }
+
+        return None;
     }
 }
 
 impl Debug for RequestInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.inner)
+        write!(f, "{:?}", self.req_info_inner)
     }
 }

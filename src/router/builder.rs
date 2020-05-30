@@ -1,12 +1,14 @@
 use crate::constants;
-use crate::data_map::DataMap;
+use crate::data_map::{DataMap, ScopedDataMap};
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
 use crate::router::{ErrHandler, ErrHandlerWithInfo, ErrHandlerWithoutInfo};
 use crate::types::RequestInfo;
 use hyper::{body::HttpBody, Method, Request, Response};
+use std::collections::HashMap;
 use std::future::Future;
+use std::sync::Arc;
 
 /// Builder for the [Router](./struct.Router.html) type.
 ///
@@ -56,8 +58,8 @@ struct BuilderInner<B, E> {
     pre_middlewares: Vec<PreMiddleware<E>>,
     routes: Vec<Route<B, E>>,
     post_middlewares: Vec<PostMiddleware<B, E>>,
+    data_maps: HashMap<String, Vec<DataMap>>,
     err_handler: Option<ErrHandler<B>>,
-    data_map: Option<DataMap>,
 }
 
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
@@ -70,14 +72,26 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
     /// Creates a new [Router](./struct.Router.html) instance from the added configuration.
     pub fn build(self) -> crate::Result<Router<B, E>> {
-        self.inner.map(|inner| {
-            Router::new(
+        self.inner.and_then(|inner| {
+            let scoped_data_maps = inner
+                .data_maps
+                .into_iter()
+                .map(|(path, data_map_arr)| {
+                    data_map_arr
+                        .into_iter()
+                        .map(|data_map| ScopedDataMap::new(path.clone(), Arc::new(data_map)))
+                        .collect::<Vec<crate::Result<ScopedDataMap>>>()
+                })
+                .flatten()
+                .collect::<Result<Vec<ScopedDataMap>, crate::Error>>()?;
+
+            Ok(Router::new(
                 inner.pre_middlewares,
                 inner.routes,
                 inner.post_middlewares,
+                scoped_data_maps,
                 inner.err_handler,
-                inner.data_map,
-            )
+            ))
         })
     }
 
@@ -493,8 +507,15 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         self.and_then(move |mut inner| {
+            let mut path = path.into();
+
+            if !path.ends_with("/") && !path.ends_with("*") {
+                path.push_str("/");
+            }
+
             let route = Route::new(path, methods, handler)?;
             inner.routes.push(route);
+
             crate::Result::Ok(inner)
         })
     }
@@ -584,6 +605,30 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             });
         }
 
+        for scoped_data_map in router.scoped_data_maps.iter_mut() {
+            let new_path = format!("{}{}", path.as_str(), scoped_data_map.path.as_str());
+            let data_map = Arc::try_unwrap(
+                scoped_data_map
+                    .data_map
+                    .take()
+                    .expect("No data map found in one of the scoped data maps"),
+            )
+            .expect("Non-zero owner of the shared data map in one of the scoped data maps");
+
+            builder = builder.and_then(move |mut inner| {
+                let data_maps = &mut inner.data_maps;
+
+                let data_map_arr = data_maps.get_mut(&new_path);
+                if let Some(data_map_arr) = data_map_arr {
+                    data_map_arr.push(data_map);
+                } else {
+                    data_maps.insert(new_path, vec![data_map]);
+                }
+
+                crate::Result::Ok(inner)
+            });
+        }
+
         builder
     }
 }
@@ -627,6 +672,27 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
     }
 
+    /// Specify app data to be shared across route handlers, middlewares and the error handler.
+    ///
+    /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
+    pub fn data<T: Send + Sync + 'static>(self, data: T) -> Self {
+        self.and_then(move |mut inner| {
+            let data_maps = &mut inner.data_maps;
+
+            let data_map_arr = data_maps.get_mut(&"/*".to_owned());
+            if let Some(data_map_arr) = data_map_arr {
+                let first_data_map = data_map_arr.get_mut(0).unwrap();
+                first_data_map.insert(data);
+            } else {
+                let mut data_map = DataMap::new();
+                data_map.insert(data);
+                data_maps.insert("/*".to_owned(), vec![data_map]);
+            }
+
+            crate::Result::Ok(inner)
+        })
+    }
+
     /// Adds a handler to handle any error raised by the routes or any middlewares. Please refer to [Error Handling](./index.html#error-handling) section
     /// for more info.
     pub fn err_handler<H, R>(self, mut handler: H) -> Self
@@ -663,22 +729,6 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    RouterBuilder<B, E>
-{
-    /// Specify app data to be shared across route handlers, middlewares and the error handler.
-    ///
-    /// Please refer to the [Data and State Sharing](./index.html#data-and-state-sharing) for more info.
-    pub fn data<T: Send + Sync + 'static>(self, data: T) -> Self {
-        self.and_then(move |mut inner| {
-            let mut data_map = inner.data_map.take().unwrap_or_else(|| DataMap::new());
-            data_map.insert(data);
-            inner.data_map.replace(data_map);
-            crate::Result::Ok(inner)
-        })
-    }
-}
-
 impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Default
     for RouterBuilder<B, E>
 {
@@ -688,8 +738,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                 pre_middlewares: Vec::new(),
                 routes: Vec::new(),
                 post_middlewares: Vec::new(),
+                data_maps: HashMap::new(),
                 err_handler: None,
-                data_map: None,
             }),
         }
     }

@@ -1,64 +1,69 @@
-use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::{Body, Request, Response, Server};
+// Import the routerify prelude traits.
 use routerify::prelude::*;
-use routerify::{Middleware, RequestInfo, Router, RouterService};
+use routerify::{Router, RouterService};
+use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-pub struct State(pub i32);
+mod users {
+    use super::*;
 
-pub async fn pre_middleware(req: Request<Body>) -> Result<Request<Body>, routerify::Error> {
-    let data = req.data::<State>().map(|s| s.0).unwrap_or(0);
-    println!("Pre Data: {}", data);
+    struct State {
+        count: Arc<Mutex<u8>>,
+    }
 
-    Ok(req)
+    async fn list(req: Request<Body>) -> Result<Response<Body>, io::Error> {
+        let count = req.data::<State>().unwrap().count.lock().unwrap();
+        Ok(Response::new(Body::from(format!("Suppliers: {}", count))))
+    }
+
+    pub fn router() -> Router<Body, io::Error> {
+        let state = State {
+            count: Arc::new(Mutex::new(20)),
+        };
+        Router::builder().data(state).get("/", list).build().unwrap()
+    }
 }
 
-pub async fn post_middleware(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, routerify::Error> {
-    let data = req_info.data::<State>().map(|s| s.0).unwrap_or(0);
-    println!("Post Data: {}", data);
+mod offers {
+    use super::*;
 
-    Ok(res)
-}
+    struct State {
+        count: Arc<Mutex<u8>>,
+    }
 
-pub async fn home_handler(req: Request<Body>) -> Result<Response<Body>, routerify::Error> {
-    let data = req.data::<State>().map(|s| s.0).unwrap_or(0);
+    async fn list(req: Request<Body>) -> Result<Response<Body>, io::Error> {
+        let count = req.data::<State>().unwrap().count.lock().unwrap();
 
-    // Ok(Response::new(Body::from(format!("New counter: {}\n", data))))
-    Err(routerify::Error::new("Error"))
-}
+        println!("I can also access parent state: {:?}", req.data::<String>().unwrap());
 
-async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
-    let data = req_info.data::<State>().map(|s| s.0).unwrap_or(0);
-    println!("Error Data: {}", data);
+        Ok(Response::new(Body::from(format!("Suppliers: {}", count))))
+    }
 
-    eprintln!("{}", err);
-    Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(Body::from(format!("Something went wrong: {}", err)))
-        .unwrap()
+    pub fn router() -> Router<Body, io::Error> {
+        let state = State {
+            count: Arc::new(Mutex::new(100)),
+        };
+        Router::builder().data(state).get("/abc", list).build().unwrap()
+    }
 }
 
 #[tokio::main]
 async fn main() {
-    let router: Router<Body, routerify::Error> = Router::builder()
-        .data(State(100))
-        .middleware(Middleware::pre(pre_middleware))
-        .middleware(Middleware::post_with_info(post_middleware))
-        .get("/", home_handler)
-        .err_handler_with_info(error_handler)
+    let scopes = Router::builder()
+        .data("Parent State data".to_owned())
+        .scope("/offers", offers::router())
+        .scope("/users", users::router())
         .build()
         .unwrap();
 
-    // Create a Service from the router above to handle incoming requests.
+    let router = Router::builder().scope("/v1", scopes).build().unwrap();
+    dbg!(&router);
+
     let service = RouterService::new(router).unwrap();
-
-    // The address on which the server will be listening.
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-
-    // Create a server by passing the created service to `.serve` method.
     let server = Server::bind(&addr).serve(service);
-
     println!("App is running on: {}", addr);
     if let Err(err) = server.await {
         eprintln!("Server error: {}", err);

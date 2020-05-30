@@ -111,8 +111,16 @@ impl RequestExt for Request<hyper::Body> {
     }
 
     fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        self.extensions()
-            .get::<SharedDataMap>()
-            .and_then(|data_map| data_map.inner.get::<T>())
+        let shared_data_maps = self.extensions().get::<Vec<SharedDataMap>>();
+
+        if let Some(shared_data_maps) = shared_data_maps {
+            for shared_data_map in shared_data_maps.iter() {
+                if let Some(data) = shared_data_map.inner.get::<T>() {
+                    return Some(data);
+                }
+            }
+        }
+
+        return None;
     }
 }
