@@ -630,6 +630,52 @@
 //! # }
 //! ```
 //!
+//! Here is any example on having app state per each sub-router:
+//!
+//! ```
+//! # use hyper::{Body, Request, Response, Server, StatusCode};
+//! # // Import the routerify prelude traits.
+//! # use routerify::prelude::*;
+//! # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//! # use std::{convert::Infallible, net::SocketAddr};
+//!
+//! mod foo {
+//!     # use std::{convert::Infallible, net::SocketAddr};
+//!     # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//!     # use hyper::{Body, Request, Response, Server, StatusCode};
+//!     pub fn router() -> Router<Body, Infallible> {
+//!         Router::builder()
+//!             // Specify data for this sub-router only.
+//!             .data("Data for foo router")
+//!             .build()
+//!             .unwrap()
+//!     }
+//! }
+//!
+//! mod bar {
+//!     # use std::{convert::Infallible, net::SocketAddr};
+//!     # use routerify::{Middleware, Router, RouterService, RequestInfo};
+//!     # use hyper::{Body, Request, Response, Server, StatusCode};
+//!     pub fn router() -> Router<Body, Infallible> {
+//!         Router::builder()
+//!             // Specify data for this sub-router only.
+//!             .data("Data for bar router")
+//!             .build()
+//!             .unwrap()
+//!     }
+//! }
+//!
+//! fn router() -> Router<Body, Infallible> {
+//!     Router::builder()
+//!         // This data will be available to all the child sub-routers.
+//!         .data(100_u32)
+//!         .scope("/foo", foo::router())
+//!         .scope("/bar", bar::router())
+//!         .build()
+//!         .unwrap()
+//! }
+//! ```
+//!
 //! You can also share multiple data as follows:
 //!
 //! ```
