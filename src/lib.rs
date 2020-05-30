@@ -489,7 +489,7 @@
 //! ## Data and State Sharing
 //!
 //! The `Routerify` also allows you to share data or app state across the route handlers, middlewares and the error handler via the [`RouterBuilder`](./struct.RouterBuilder.html) method
-//! [`data`](./struct.RouterBuilder.html#method.data). As it provides composable router API, it also allows to have app state/data per sub-router.
+//! [`data`](./struct.RouterBuilder.html#method.data). As it provides composable router API, it also allows to have app state/data per each sub-router.
 //!
 //! Here is an example to share app state:
 //!
