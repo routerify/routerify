@@ -16,6 +16,12 @@ impl Serve {
         self.addr
     }
 
+    pub fn new_request(&self, method: &str, route: &str) -> http::request::Builder {
+        http::request::Request::builder()
+            .method(method.to_ascii_uppercase().as_str())
+            .uri(format!("http://{}{}", self.addr(), route))
+    }
+
     pub fn shutdown(self) {
         self.tx.send(()).unwrap();
     }
