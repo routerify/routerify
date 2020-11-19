@@ -1,9 +1,9 @@
-use crate::prelude::*;
+use crate::Error;
 use lazy_static::lazy_static;
 use regex::Regex;
 
 lazy_static! {
-    static ref PATH_PARAMS_RE: Regex = { Regex::new(r"(?s)(?::([^/]+))|(?:\*)").unwrap() };
+    static ref PATH_PARAMS_RE: Regex = Regex::new(r"(?s)(?::([^/]+))|(?:\*)").unwrap();
 }
 
 fn generate_common_regex_str(path: &str) -> crate::Result<(String, Vec<String>)> {
@@ -38,7 +38,7 @@ fn generate_common_regex_str(path: &str) -> crate::Result<(String, Vec<String>)>
 pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}{}", r"(?s)^", common_regex_str, "$");
-    let re = Regex::new(re_str.as_str()).wrap()?;
+    let re = Regex::new(re_str.as_str()).map_err(Error::GenerateExactMatchRegex)?;
     Ok((re, params))
 }
 
@@ -46,7 +46,7 @@ pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Ve
 pub(crate) fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path)?;
     let re_str = format!("{}{}", r"(?s)^", common_regex_str);
-    let re = Regex::new(re_str.as_str()).wrap()?;
+    let re = Regex::new(re_str.as_str()).map_err(Error::GeneratePrefixMatchRegex)?;
     Ok((re, params))
 }
 

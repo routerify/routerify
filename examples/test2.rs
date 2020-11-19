@@ -2,8 +2,6 @@ use hyper::{Body, Request, Response, Server, StatusCode};
 use routerify::prelude::*;
 use routerify::{Middleware, RequestInfo, Router, RouterService};
 use std::net::SocketAddr;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub struct State(pub i32);
 
@@ -27,8 +25,7 @@ pub async fn home_handler(req: Request<Body>) -> Result<Response<Body>, routerif
     println!("Route Data: {}", data);
     println!("Route Data2: {:?}", req.data::<u32>());
 
-    // Ok(Response::new(Body::from(format!("New counter: {}\n", data))))
-    Err(routerify::Error::new("Error"))
+    Err(routerify::Error::HandleRequest("Error".into()))
 }
 
 async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {

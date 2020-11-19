@@ -1,70 +1,27 @@
-use std::fmt::{self, Debug, Display, Formatter};
-
 /// The error type used by the `Routerify` library.
-pub struct Error {
-    msg: String,
-}
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Couldn't decode the request path as UTF8")]
+    DecodeRequestPath(#[source] std::str::Utf8Error),
 
-impl Error {
-    /// Creates a new error instance with the specified message.
-    pub fn new<M: Into<String>>(msg: M) -> Self {
-        Error { msg: msg.into() }
-    }
+    #[error("Couldn't create router RegexSet")]
+    CreateRouterRegexSet(#[source] regex::Error),
 
-    /// Converts other error type to the `routerify::Error` type.
-    pub fn wrap<E: std::error::Error + Send + Sync + 'static>(err: E) -> Self {
-        Error { msg: err.to_string() }
-    }
-}
+    #[error("Could not create an exact match regex for the route path")]
+    GenerateExactMatchRegex(#[source] regex::Error),
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "routerify::Error: {}", self.msg)
-    }
-}
+    #[error("Could not create an exact match regex for the route path")]
+    GeneratePrefixMatchRegex(#[source] regex::Error),
 
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "routerify::Error: {}", self.msg)
-    }
-}
+    #[error("One of the pre middlewares couldn't process the request")]
+    ProcessPreMiddleware(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-impl std::error::Error for Error {
-    fn description(&self) -> &str {
-        self.msg.as_str()
-    }
-}
+    #[error("No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.")]
+    HandleNonExistentRoute,
 
-pub trait ErrorExt {
-    fn wrap(self) -> Error;
-    fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Error;
-}
+    #[error("One of the post middlewares couldn't process the response")]
+    ProcessPostMiddleware(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-impl<E: std::error::Error + Send + Sync + 'static> ErrorExt for E {
-    fn wrap(self) -> Error {
-        Error { msg: self.to_string() }
-    }
-
-    fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Error {
-        let msg = format!("{}: {}", ctx, self.to_string());
-        Error { msg }
-    }
-}
-
-pub trait ResultExt<T> {
-    fn wrap(self) -> Result<T, Error>;
-    fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Result<T, Error>;
-}
-
-impl<T, E: std::error::Error + Send + Sync + 'static> ResultExt<T> for Result<T, E> {
-    fn wrap(self) -> Result<T, Error> {
-        self.map_err(|e| e.wrap())
-    }
-
-    fn context<C: Display + Send + Sync + 'static>(self, ctx: C) -> Result<T, Error> {
-        match self {
-            Ok(val) => Ok(val),
-            Err(err) => Err(err.context(ctx)),
-        }
-    }
+    #[error("One of the routes couldn't handle the request")]
+    HandleRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
