@@ -13,15 +13,18 @@ pub enum Error {
     #[error("Could not create an exact match regex for the route path")]
     GeneratePrefixMatchRegex(#[source] regex::Error),
 
-    #[error("One of the pre middlewares couldn't process the request")]
-    ProcessPreMiddleware(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-
     #[error("No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.")]
     HandleNonExistentRoute,
 
-    #[error("One of the post middlewares couldn't process the response")]
-    ProcessPostMiddleware(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("One of the routes couldn't handle a pre-middleware request")]
+    HandlePreMiddlewareRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    #[error("One of the routes couldn't handle the request")]
-    HandleRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("One of the routes couldn't handle the request for target: {1}")]
+    HandleRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>, String),
+
+    #[error("One of the routes couldn't handle a pre-middleware request")]
+    HandlePostMiddlewareWithoutInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("One of the post middlewares couldn't process the response")]
+    HandlePostMiddlewareWithInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }

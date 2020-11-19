@@ -142,11 +142,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         match handler {
             Handler::WithoutInfo(ref mut handler) => Pin::from(handler(res))
                 .await
-                .map_err(|e| Error::HandleRequest(e.into())),
+                .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
             Handler::WithInfo(ref mut handler) => {
                 Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
                     .await
-                    .map_err(|e| Error::HandleRequest(e.into()))
+                    .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into()))
             }
         }
     }

@@ -99,7 +99,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
         Pin::from(handler(req))
             .await
-            .map_err(|e| Error::HandleRequest(e.into()))
+            .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
     }
 
     fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {

@@ -178,10 +178,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         for idx in matched_pre_middleware_idxs {
             let pre_middleware = &mut self.pre_middlewares[idx];
 
-            transformed_req = pre_middleware
-                .process(transformed_req)
-                .await
-                .map_err(|e| Error::ProcessPreMiddleware(e.into()))?;
+            transformed_req = pre_middleware.process(transformed_req).await?;
         }
 
         let mut resp = None;
@@ -189,10 +186,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             let route = &mut self.routes[idx];
 
             if route.is_match_method(transformed_req.method()) {
-                let route_resp_res = route
-                    .process(target_path, transformed_req)
-                    .await
-                    .map_err(|e| Error::HandleRequest(e.into()));
+                let route_resp_res = route.process(target_path, transformed_req).await;
 
                 let route_resp = match route_resp_res {
                     Ok(route_resp) => route_resp,
@@ -217,11 +211,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         let mut transformed_res = resp.unwrap();
         for idx in matched_post_middleware_idxs {
             let post_middleware = &mut self.post_middlewares[idx];
-
-            transformed_res = post_middleware
-                .process(transformed_res, req_info.clone())
-                .await
-                .map_err(|e| Error::ProcessPostMiddleware(e.into()))?;
+            transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
         }
 
         Ok(transformed_res)

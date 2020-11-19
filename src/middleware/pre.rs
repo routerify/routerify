@@ -73,7 +73,7 @@ impl<E: std::error::Error + Send + Sync + Unpin + 'static> PreMiddleware<E> {
 
         Pin::from(handler(req))
             .await
-            .map_err(|e| Error::HandleRequest(e.into()))
+            .map_err(|e| Error::HandlePreMiddlewareRequest(e.into()))
     }
 }
 

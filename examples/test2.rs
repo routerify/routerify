@@ -25,7 +25,10 @@ pub async fn home_handler(req: Request<Body>) -> Result<Response<Body>, routerif
     println!("Route Data: {}", data);
     println!("Route Data2: {:?}", req.data::<u32>());
 
-    Err(routerify::Error::HandleRequest("Error".into()))
+    Err(routerify::Error::HandleRequest(
+        "Error".into(),
+        "/some/fake/path".into(),
+    ))
 }
 
 async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
