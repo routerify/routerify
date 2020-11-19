@@ -14,7 +14,7 @@ fn router() -> Router<Body, routerify::Error> {
             .unwrap(),
         );
 
-        builder = builder.get(format!("/abc-{}", i), move |req| async move {
+        builder = builder.get(format!("/abc-{}", i), move |_req| async move {
             // println!("Route: {}, params: {:?}", format!("/abc-{}", i), req.params());
             Ok(Response::new(Body::from(format!("/abc-{}", i))))
         });

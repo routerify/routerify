@@ -1,6 +1,6 @@
-use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::RequestInfo;
+use crate::Error;
 use hyper::{body::HttpBody, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -43,8 +43,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         handler: Handler<B, E>,
     ) -> crate::Result<PostMiddleware<B, E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())
-            .context("Could not create an exact match regex for the post middleware path")?;
+        let (re, _) = generate_exact_match_regex(path.as_str())?;
 
         Ok(PostMiddleware {
             path,
@@ -141,11 +140,13 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .expect("A router can not be used after mounting into another router");
 
         match handler {
-            Handler::WithoutInfo(ref mut handler) => Pin::from(handler(res)).await.wrap(),
+            Handler::WithoutInfo(ref mut handler) => Pin::from(handler(res))
+                .await
+                .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
             Handler::WithInfo(ref mut handler) => {
                 Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
                     .await
-                    .wrap()
+                    .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into()))
             }
         }
     }

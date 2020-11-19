@@ -13,13 +13,22 @@ async fn about_handler(_: Request<Body>) -> Result<Response<Body>, io::Error> {
     Ok(Response::new(Body::from("About page")))
 }
 
+fn format_cause_chain(err: impl std::error::Error) -> String {
+    let mut lines = vec![format!("error: {}", err)];
+    let mut source = err.source();
+    while let Some(src) = source {
+        lines.push(format!("  caused by: {}", src));
+        source = src.source();
+    }
+    lines.join("\n")
+}
+
 // Define an error handler function which will accept the `routerify::Error`
 // and generates an appropriate response.
 async fn error_handler(err: routerify::Error) -> Response<Body> {
-    eprintln!("{}", err);
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(Body::from(format!("Something went wrong: {}", err)))
+        .body(Body::from(format_cause_chain(err)))
         .unwrap()
 }
 

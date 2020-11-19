@@ -1,8 +1,8 @@
 use crate::data_map::ScopedDataMap;
 use crate::middleware::{PostMiddleware, PreMiddleware};
-use crate::prelude::*;
 use crate::route::Route;
 use crate::types::RequestInfo;
+use crate::Error;
 use hyper::{body::HttpBody, Request, Response};
 use regex::RegexSet;
 use std::fmt::{self, Debug, Formatter};
@@ -117,7 +117,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .chain(self.post_middlewares.iter().map(|m| m.regex.as_str()))
             .chain(self.scoped_data_maps.iter().map(|d| d.regex.as_str()));
 
-        self.regex_set = Some(RegexSet::new(regex_iter).context("Couldn't create router RegexSet")?);
+        self.regex_set = Some(RegexSet::new(regex_iter).map_err(Error::CreateRouterRegexSet)?);
 
         Ok(())
     }
@@ -166,7 +166,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .collect::<Vec<_>>();
 
         if let Some(ref mut req_info) = req_info {
-            if shared_data_maps.len() > 0 {
+            if !shared_data_maps.is_empty() {
                 req_info.shared_data_maps.replace(Box::new(shared_data_maps.clone()));
             }
         }
@@ -178,21 +178,15 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         for idx in matched_pre_middleware_idxs {
             let pre_middleware = &mut self.pre_middlewares[idx];
 
-            transformed_req = pre_middleware
-                .process(transformed_req)
-                .await
-                .context("One of the pre middlewares couldn't process the request")?;
+            transformed_req = pre_middleware.process(transformed_req).await?;
         }
 
-        let mut resp: Option<Response<B>> = None;
+        let mut resp = None;
         for idx in matched_route_idxs {
             let route = &mut self.routes[idx];
 
             if route.is_match_method(transformed_req.method()) {
-                let route_resp_res = route
-                    .process(target_path, transformed_req)
-                    .await
-                    .context("One of the routes couldn't process the request");
+                let route_resp_res = route.process(target_path, transformed_req).await;
 
                 let route_resp = match route_resp_res {
                     Ok(route_resp) => route_resp,
@@ -200,7 +194,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
                         if let Some(ref mut err_handler) = self.err_handler {
                             err_handler.execute(err, req_info.clone()).await
                         } else {
-                            return crate::Result::Err(err);
+                            return Err(err);
                         }
                     }
                 };
@@ -210,18 +204,14 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             }
         }
 
-        if let None = resp {
-            return Err(crate::Error::new("No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes."));
+        if resp.is_none() {
+            return Err(Error::HandleNonExistentRoute);
         }
 
         let mut transformed_res = resp.unwrap();
         for idx in matched_post_middleware_idxs {
             let post_middleware = &mut self.post_middlewares[idx];
-
-            transformed_res = post_middleware
-                .process(transformed_res, req_info.clone())
-                .await
-                .context("One of the post middlewares couldn't process the response")?;
+            transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
         }
 
         Ok(transformed_res)

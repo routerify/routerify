@@ -1,7 +1,7 @@
 use crate::helpers;
-use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::{RequestMeta, RouteParams};
+use crate::Error;
 use hyper::{body::HttpBody, Method, Request, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -60,8 +60,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         handler: Handler<B, E>,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
-        let (re, params) = generate_exact_match_regex(path.as_str())
-            .context("Could not create an exact match regex for the route path")?;
+        let (re, params) = generate_exact_match_regex(path.as_str())?;
 
         Ok(Route {
             path,
@@ -98,7 +97,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .as_mut()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req)).await.wrap()
+        Pin::from(handler(req))
+            .await
+            .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
     }
 
     fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {

@@ -1,5 +1,4 @@
 use crate::data_map::{DataMap, SharedDataMap};
-use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -16,8 +15,7 @@ pub(crate) struct ScopedDataMap {
 impl ScopedDataMap {
     pub fn new<P: Into<String>>(path: P, data_map: Arc<DataMap>) -> crate::Result<ScopedDataMap> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())
-            .context("Could not create an exact match regex for the scoped data map path")?;
+        let (re, _) = generate_exact_match_regex(path.as_str())?;
 
         Ok(ScopedDataMap {
             path,
