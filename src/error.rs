@@ -7,24 +7,24 @@ pub enum Error {
     #[error("Couldn't create router RegexSet")]
     CreateRouterRegexSet(#[source] regex::Error),
 
-    #[error("Could not create an exact match regex for the route path")]
-    GenerateExactMatchRegex(#[source] regex::Error),
+    #[error("Could not create an exact match regex for the route path: {1}")]
+    GenerateExactMatchRegex(#[source] regex::Error, String),
 
-    #[error("Could not create an exact match regex for the route path")]
-    GeneratePrefixMatchRegex(#[source] regex::Error),
+    #[error("Could not create an exact match regex for the route path: {1}")]
+    GeneratePrefixMatchRegex(#[source] regex::Error, String),
 
     #[error("No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.")]
     HandleNonExistentRoute,
 
-    #[error("One of the routes couldn't handle a pre-middleware request")]
+    #[error("A route was unable to handle the pre middleware request")]
     HandlePreMiddlewareRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    #[error("One of the routes couldn't handle the request for target: {1}")]
+    #[error("A route was unable to handle the request for target: {1}")]
     HandleRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>, String),
 
-    #[error("One of the routes couldn't handle a pre-middleware request")]
+    #[error("One of the post middlewares (without info) couldn't process the response")]
     HandlePostMiddlewareWithoutInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    #[error("One of the post middlewares couldn't process the response")]
+    #[error("One of the post middlewares (with info) couldn't process the response")]
     HandlePostMiddlewareWithInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
