@@ -22,11 +22,14 @@ pub struct PreMiddleware<E> {
     pub(crate) handler: Option<Handler<E>>,
 }
 
-impl<E: std::error::Error + Send + Sync + Unpin + 'static> PreMiddleware<E> {
-    pub(crate) fn new_with_boxed_handler<P: Into<String>>(
-        path: P,
-        handler: Handler<E>,
-    ) -> crate::Result<PreMiddleware<E>> {
+impl<E> PreMiddleware<E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    pub(crate) fn new_with_boxed_handler<P>(path: P, handler: Handler<E>) -> crate::Result<PreMiddleware<E>>
+    where
+        P: Into<String>,
+    {
         let path = path.into();
         let (re, _) = generate_exact_match_regex(path.as_str())
             .context("Could not create an exact match regex for the pre middleware path")?;

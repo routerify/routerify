@@ -3,7 +3,7 @@ use crate::middleware::PostMiddleware;
 use crate::route::Route;
 use crate::router::ErrHandler;
 use crate::router::Router;
-use crate::service::request_service::RequestService;
+use crate::service::{request_service::RequestService, BoxedFutureResult};
 use hyper::{
     body::HttpBody,
     header::{self, HeaderValue},
@@ -13,9 +13,10 @@ use hyper::{
 };
 use std::any::Any;
 use std::convert::Infallible;
-use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
+use tokio::sync::Mutex;
 
 /// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
 ///
@@ -64,13 +65,14 @@ use std::task::{Context, Poll};
 ///    }
 /// }
 /// ```
-#[derive(Debug)]
 pub struct RouterService<B, E> {
-    router: Router<B, E>,
+    router: Arc<Mutex<Router<B, E>>>,
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    RouterService<B, E>
+impl<B, E> RouterService<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
@@ -86,7 +88,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         router.init_regex_set()?;
         router.init_req_info_gen()?;
 
-        Ok(RouterService { router })
+        Ok(RouterService {
+            router: Arc::new(Mutex::new(router)),
+        })
     }
 
     fn init_router_with_x_powered_by_middleware(router: &mut Router<B, E>) {
@@ -207,12 +211,14 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Service<&AddrStream> for RouterService<B, E>
+impl<B, E> Service<&AddrStream> for RouterService<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    type Future = Pin<BoxedFutureResult<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -220,14 +226,10 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
     fn call(&mut self, conn: &AddrStream) -> Self::Future {
         let remote_addr = conn.remote_addr();
-
-        let req_service = RequestService {
-            router: &mut self.router,
+        let service = RequestService {
+            router: self.router.clone(),
             remote_addr,
         };
-
-        let fut = async move { Ok(req_service) };
-
-        Box::pin(fut)
+        Box::pin(async move { Ok(service) })
     }
 }

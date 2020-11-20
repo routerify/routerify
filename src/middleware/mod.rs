@@ -25,8 +25,10 @@ pub enum Middleware<B, E> {
     Post(PostMiddleware<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Middleware<B, E>
+impl<B, E> Middleware<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
 {
     /// Creates a pre middleware with a handler at the `/*` path.
     ///
@@ -92,9 +94,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     ///
     /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
     ///     let headers = req_info.headers();
-    ///     
+    ///
     ///     // Do some response transformation based on the request headers, method etc.
-    ///     
+    ///
     ///     Ok(res)
     /// }
     ///
@@ -181,9 +183,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     ///
     /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
     ///     let _headers = req_info.headers();
-    ///     
+    ///
     ///     // Do some response transformation based on the request headers, method etc.
-    ///     
+    ///
     ///     Ok(res)
     /// }
     ///

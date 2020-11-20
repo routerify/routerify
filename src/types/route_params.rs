@@ -39,7 +39,7 @@ impl RouteParams {
     /// let router = Router::builder()
     ///     .get("/users/:userName/books/:bookName", |req| async move {
     ///         let params: &RouteParams = req.params();
-    ///         
+    ///
     ///         let user_name = params.get("userName").unwrap();
     ///         let book_name = params.get("bookName").unwrap();
     ///
@@ -69,7 +69,7 @@ impl RouteParams {
     /// let router = Router::builder()
     ///     .get("/users/:userName", |req| async move {
     ///         let params: &RouteParams = req.params();
-    ///         
+    ///
     ///         if params.has("userName") {
     ///             Ok(Response::new(Body::from(params.get("userName").unwrap().to_string())))
     ///         } else {

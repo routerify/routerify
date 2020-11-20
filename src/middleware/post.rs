@@ -35,8 +35,10 @@ pub(crate) enum Handler<B, E> {
     WithInfo(HandlerWithInfo<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    PostMiddleware<B, E>
+impl<B, E> PostMiddleware<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
@@ -93,9 +95,9 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     ///
     /// async fn post_middleware_with_info_handler(res: Response<Body>, req_info: RequestInfo) -> Result<Response<Body>, Infallible> {
     ///     let headers = req_info.headers();
-    ///     
+    ///
     ///     // Do some response transformation based on the request headers, method etc.
-    ///     
+    ///
     ///     Ok(res)
     /// }
     ///

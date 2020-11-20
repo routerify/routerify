@@ -53,17 +53,24 @@ pub struct Route<B, E> {
     pub(crate) methods: Vec<Method>,
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Route<B, E> {
-    pub(crate) fn new_with_boxed_handler<P: Into<String>>(
+impl<B, E> Route<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+{
+    pub(crate) fn new_with_boxed_handler<P>(
         path: P,
         methods: Vec<Method>,
         handler: Handler<B, E>,
-    ) -> crate::Result<Route<B, E>> {
+    ) -> crate::Result<Route<B, E>>
+    where
+        P: Into<String>,
+    {
         let path = path.into();
         let (re, params) = generate_exact_match_regex(path.as_str())
             .context("Could not create an exact match regex for the route path")?;
 
-        Ok(Route {
+        Ok(Self {
             path,
             regex: re,
             route_params: params,

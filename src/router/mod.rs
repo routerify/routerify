@@ -78,7 +78,10 @@ pub(crate) enum ErrHandler<B> {
     WithInfo(ErrHandlerWithInfo<B>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
+impl<B> ErrHandler<B>
+where
+    B: HttpBody + Send + Sync + 'static,
+{
     pub(crate) async fn execute(&mut self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
             ErrHandler::WithoutInfo(ref mut err_handler) => Pin::from(err_handler(err)).await,
@@ -89,7 +92,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Router<B, E> {
+impl<B, E> Router<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+{
     pub(crate) fn new(
         pre_middlewares: Vec<PreMiddleware<E>>,
         routes: Vec<Route<B, E>>,
@@ -166,8 +173,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
             .collect::<Vec<_>>();
 
         if let Some(ref mut req_info) = req_info {
-            if shared_data_maps.len() > 0 {
-                req_info.shared_data_maps.replace(Box::new(shared_data_maps.clone()));
+            if !shared_data_maps.is_empty() {
+                req_info.shared_data_maps.replace(shared_data_maps.clone());
             }
         }
 

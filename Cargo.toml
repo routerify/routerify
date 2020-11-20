@@ -27,6 +27,7 @@ http = "0.2"
 regex = "1.3"
 lazy_static = "1.4"
 percent-encoding = "2.1"
+tokio = { version = "0.2", features = ["sync"] }
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }

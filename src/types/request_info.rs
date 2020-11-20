@@ -1,5 +1,5 @@
 use crate::data_map::SharedDataMap;
-use hyper::{Body, HeaderMap, Method, Request, Uri, Version};
+use hyper::{HeaderMap, Method, Request, Uri, Version};
 use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct RequestInfo {
     pub(crate) req_info_inner: Arc<RequestInfoInner>,
-    pub(crate) shared_data_maps: Option<Box<Vec<SharedDataMap>>>,
+    pub(crate) shared_data_maps: Option<Vec<SharedDataMap>>,
 }
 
 #[derive(Debug)]
@@ -22,16 +22,14 @@ pub(crate) struct RequestInfoInner {
 }
 
 impl RequestInfo {
-    pub(crate) fn new_from_req(req: &Request<Body>) -> Self {
-        let inner = RequestInfoInner {
-            headers: req.headers().clone(),
-            method: req.method().clone(),
-            uri: req.uri().clone(),
-            version: req.version(),
-        };
-
-        RequestInfo {
-            req_info_inner: Arc::new(inner),
+    pub(crate) fn new_from_req<B>(req: &Request<B>) -> Self {
+        Self {
+            req_info_inner: Arc::new(RequestInfoInner {
+                headers: req.headers().clone(),
+                method: req.method().clone(),
+                uri: req.uri().clone(),
+                version: req.version(),
+            }),
             shared_data_maps: None,
         }
     }
@@ -69,7 +67,7 @@ impl RequestInfo {
             }
         }
 
-        return None;
+        None
     }
 }
 
