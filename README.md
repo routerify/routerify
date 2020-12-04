@@ -147,7 +147,7 @@ Please visit: [Docs](https://docs.rs/routerify) for an exhaustive documentation.
 
 ## Examples
 
-The common [examples](https://github.com/routerify/routerify/tree/master/examples).
+The [examples](https://github.com/routerify/routerify/tree/master/examples).
 
 ## Contributing
 

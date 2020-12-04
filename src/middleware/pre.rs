@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::regex_generator::generate_exact_match_regex;
+use crate::Error;
 use hyper::Request;
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -28,8 +28,7 @@ impl<E: std::error::Error + Send + Sync + Unpin + 'static> PreMiddleware<E> {
         handler: Handler<E>,
     ) -> crate::Result<PreMiddleware<E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())
-            .context("Could not create an exact match regex for the pre middleware path")?;
+        let (re, _) = generate_exact_match_regex(path.as_str())?;
 
         Ok(PreMiddleware {
             path,
@@ -72,7 +71,9 @@ impl<E: std::error::Error + Send + Sync + Unpin + 'static> PreMiddleware<E> {
             .as_mut()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req)).await.wrap()
+        Pin::from(handler(req))
+            .await
+            .map_err(|e| Error::HandlePreMiddlewareRequest(e.into()))
     }
 }
 

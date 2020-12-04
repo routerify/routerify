@@ -99,7 +99,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         })
         .unwrap();
 
-        router.post_middlewares.push(x_powered_by_post_middleware);
+        router.post_middlewares.insert(0, x_powered_by_post_middleware);
     }
 
     // fn init_router_with_keep_alive_middleware(router: &mut Router<B, E>) {
