@@ -1,6 +1,6 @@
 [package]
 name = "routerify"
-version = "2.0.0-beta-1"
+version = "2.0.0-beta-2"
 description = "A lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library hyper.rs."
 homepage = "https://github.com/routerify/routerify"
 repository = "https://github.com/routerify/routerify"
@@ -22,7 +22,7 @@ default = []
 all = []
 
 [dependencies]
-hyper = "0.13"
+hyper = { version = "0.14", default-features = false, features = ["full"] }
 http = "0.2"
 regex = "1"
 lazy_static = "1"
@@ -30,5 +30,4 @@ percent-encoding = "2"
 thiserror = "1"
 
 [dev-dependencies]
-tokio = { version = "0.2", features = ["full"] }
-stream-body = "0.1"
+tokio = { version = "1", features = ["full"] }
