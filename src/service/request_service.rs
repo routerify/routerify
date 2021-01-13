@@ -65,3 +65,37 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         Box::pin(fut)
     }
 }
+
+#[derive(Debug)]
+pub struct RequestServiceBuilder<B, E> {
+    router: Arc<Router<B, E>>,
+}
+
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RequestServiceBuilder<B, E>
+{
+    pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
+        router.init_x_powered_by_middleware();
+        // router.init_keep_alive_middleware();
+
+        router.init_global_options_route();
+        router.init_default_404_route();
+
+        router.init_err_handler();
+
+        router.init_regex_set()?;
+        router.init_req_info_gen();
+        Ok(Self {
+            router: Arc::from(router),
+        })
+    }
+}
+
+impl<B, E> RequestServiceBuilder<B, E> {
+    pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
+        RequestService {
+            router: self.router.clone(),
+            remote_addr,
+        }
+    }
+}

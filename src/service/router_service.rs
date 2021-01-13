@@ -1,21 +1,9 @@
-use crate::constants;
-use crate::middleware::PostMiddleware;
-use crate::route::Route;
-use crate::router::ErrHandler;
 use crate::router::Router;
-use crate::service::request_service::RequestService;
-use hyper::{
-    body::HttpBody,
-    header::{self, HeaderValue},
-    server::conn::AddrStream,
-    service::Service,
-    Method, Response, StatusCode,
-};
-use std::any::Any;
+use crate::service::request_service::{RequestService, RequestServiceBuilder};
+use hyper::{body::HttpBody, server::conn::AddrStream, service::Service};
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
@@ -67,7 +55,7 @@ use std::task::{Context, Poll};
 /// ```
 #[derive(Debug)]
 pub struct RouterService<B, E> {
-    router: Arc<Router<B, E>>,
+    builder: RequestServiceBuilder<B, E>,
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
@@ -75,138 +63,9 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
-    pub fn new(mut router: Router<B, E>) -> crate::Result<RouterService<B, E>> {
-        Self::init_router_with_x_powered_by_middleware(&mut router);
-        // Self::init_router_with_keep_alive_middleware(&mut router);
-
-        Self::init_router_with_global_options_route(&mut router);
-        Self::init_router_with_default_404_route(&mut router);
-
-        Self::init_router_with_err_handler(&mut router);
-
-        router.init_regex_set()?;
-        router.init_req_info_gen();
-
-        Ok(RouterService {
-            router: Arc::new(router),
-        })
-    }
-
-    fn init_router_with_x_powered_by_middleware(router: &mut Router<B, E>) {
-        let x_powered_by_post_middleware = PostMiddleware::new("/*", |mut res| async move {
-            res.headers_mut().insert(
-                constants::HEADER_NAME_X_POWERED_BY,
-                HeaderValue::from_static(constants::HEADER_VALUE_X_POWERED_BY),
-            );
-            Ok(res)
-        })
-        .unwrap();
-
-        router.post_middlewares.insert(0, x_powered_by_post_middleware);
-    }
-
-    // fn init_router_with_keep_alive_middleware(router: &mut Router<B, E>) {
-    //     let keep_alive_post_middleware = PostMiddleware::new("/*", |mut res| async move {
-    //         res.headers_mut()
-    //             .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
-    //         Ok(res)
-    //     })
-    //     .unwrap();
-
-    //     router.post_middlewares.push(keep_alive_post_middleware);
-    // }
-
-    fn init_router_with_global_options_route(router: &mut Router<B, E>) {
-        let options_method = vec![Method::OPTIONS];
-        let found = router
-            .routes
-            .iter()
-            .any(|route| route.path == "/*" && route.methods.as_slice() == options_method.as_slice());
-
-        if found {
-            return;
-        }
-
-        if let Some(router) = Self::downcast_router_to_hyper_body_type(router) {
-            let options_route: Route<hyper::Body, E> = Route::new("/*", options_method, |_req| async move {
-                Ok(Response::builder()
-                    .status(StatusCode::NO_CONTENT)
-                    .body(hyper::Body::empty())
-                    .expect("Couldn't create the default OPTIONS response"))
-            })
-            .unwrap();
-
-            router.routes.push(options_route);
-        } else {
-            eprintln!(
-                "Warning: No global `options method` route added. It is recommended to send response to any `options` request.\n\
-                Please add one by calling `.options(\"/*\", handler)` method of the root router builder.\n"
-            );
-        }
-    }
-
-    fn init_router_with_default_404_route(router: &mut Router<B, E>) {
-        let found = router
-            .routes
-            .iter()
-            .any(|route| route.path == "/*" && route.methods.as_slice() == &constants::ALL_POSSIBLE_HTTP_METHODS[..]);
-
-        if found {
-            return;
-        }
-
-        if let Some(router) = Self::downcast_router_to_hyper_body_type(router) {
-            let default_404_route: Route<hyper::Body, E> =
-                Route::new("/*", constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(), |_req| async move {
-                    Ok(Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .header(header::CONTENT_TYPE, "text/plain")
-                        .body(hyper::Body::from(StatusCode::NOT_FOUND.canonical_reason().unwrap()))
-                        .expect("Couldn't create the default 404 response"))
-                })
-                .unwrap();
-            router.routes.push(default_404_route);
-        } else {
-            eprintln!(
-                "Warning: No default 404 route added. It is recommended to send 404 response to any non-existent route.\n\
-                Please add one by calling `.any(handler)` method of the root router builder.\n"
-            );
-        }
-    }
-
-    fn init_router_with_err_handler(router: &mut Router<B, E>) {
-        let found = router.err_handler.is_some();
-
-        if found {
-            return;
-        }
-
-        if let Some(router) = Self::downcast_router_to_hyper_body_type(router) {
-            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: crate::Error| {
-                Box::new(async move {
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .header(header::CONTENT_TYPE, "text/plain")
-                        .body(hyper::Body::from(format!(
-                            "{}: {}",
-                            StatusCode::INTERNAL_SERVER_ERROR.canonical_reason().unwrap(),
-                            err
-                        )))
-                        .expect("Couldn't create a response while handling the server error")
-                })
-            }));
-            router.err_handler = Some(handler);
-        } else {
-            eprintln!(
-                "Warning: No error handler added. It is recommended to add one to see what went wrong if any route or middleware fails.\n\
-                Please add one by calling `.err_handler(handler)` method of the root router builder.\n"
-            );
-        }
-    }
-
-    fn downcast_router_to_hyper_body_type(router: &mut Router<B, E>) -> Option<&mut Router<hyper::Body, E>> {
-        let any_obj: &mut dyn Any = router;
-        any_obj.downcast_mut::<Router<hyper::Body, E>>()
+    pub fn new(router: Router<B, E>) -> crate::Result<RouterService<B, E>> {
+        let builder = RequestServiceBuilder::new(router)?;
+        Ok(RouterService { builder })
     }
 }
 
@@ -222,12 +81,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     }
 
     fn call(&mut self, conn: &AddrStream) -> Self::Future {
-        let remote_addr = conn.remote_addr();
-
-        let req_service = RequestService {
-            router: self.router.clone(),
-            remote_addr,
-        };
+        let req_service = self.builder.build(conn.remote_addr());
 
         let fut = async move { Ok(req_service) };
 
