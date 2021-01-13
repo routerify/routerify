@@ -99,3 +99,35 @@ impl<B, E> RequestServiceBuilder<B, E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Error, RequestServiceBuilder, Router};
+    use http::Method;
+    use hyper::service::Service;
+    use hyper::{Body, Request, Response};
+    use std::net::SocketAddr;
+    use std::str::FromStr;
+
+    #[tokio::test]
+    async fn should_route_request() {
+        const RESPONSE_TEXT: &str = "Hello world!";
+        let remote_addr = SocketAddr::from_str("0.0.0.0:8080").unwrap();
+        let router: Router<hyper::body::Body, Error> = Router::builder()
+            .get("/", |_| async move { Ok(Response::new(Body::from(RESPONSE_TEXT))) })
+            .build()
+            .unwrap();
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri("/")
+            .body(hyper::Body::empty())
+            .unwrap();
+        let mut builder = RequestServiceBuilder::new(router).unwrap();
+        let mut service = builder.build(remote_addr);
+        // poll_fn(|_| -> Poll<Option<Result<(), Error>>> { Poll::Ready(Some(Ok(()))) });
+        let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();
+        let body = resp.into_body();
+        let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
+        assert_eq!(RESPONSE_TEXT, body)
+    }
+}
