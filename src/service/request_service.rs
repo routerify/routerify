@@ -41,7 +41,7 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
 
             let mut target_path = helpers::percent_decode_request_path(req.uri().path())?;
 
-            if target_path.as_bytes()[target_path.len() - 1] != b'/' {
+            if target_path.is_empty() || target_path.as_bytes()[target_path.len() - 1] != b'/' {
                 target_path.push_str("/");
             }
 
