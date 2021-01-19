@@ -31,3 +31,4 @@ thiserror = "1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+futures = { version = "0.3" }
