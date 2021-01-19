@@ -104,10 +104,12 @@ impl<B, E> RequestServiceBuilder<B, E> {
 mod tests {
     use crate::{Error, RequestServiceBuilder, Router};
     use http::Method;
+    use hyper::server::accept::poll_fn;
     use hyper::service::Service;
     use hyper::{Body, Request, Response};
     use std::net::SocketAddr;
     use std::str::FromStr;
+    use std::task::Poll;
 
     #[tokio::test]
     async fn should_route_request() {
@@ -124,7 +126,7 @@ mod tests {
             .unwrap();
         let mut builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
-        // poll_fn(|_| -> Poll<Option<Result<(), Error>>> { Poll::Ready(Some(Ok(()))) });
+        poll_fn(|_| -> Poll<Option<Result<(), Error>>> { Poll::Ready(Some(Ok(()))) });
         let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();
         let body = resp.into_body();
         let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
