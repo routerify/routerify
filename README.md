@@ -12,7 +12,7 @@
 [![Contributors](https://img.shields.io/github/contributors/routerify/routerify.svg)](https://github.com/orgs/routerify/people)
 [![MIT](https://img.shields.io/crates/l/routerify.svg)](./LICENSE)
 
-# Looking for a maintainer. Please ping me at hello@rousan.io, if anyone is interested to actively maintain this repo.
+# Looking for a maintainer. Please ping me at hello@rousan.io, if anyone is interested to actively maintain this project.
 
 # Routerify
 
