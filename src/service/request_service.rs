@@ -126,9 +126,7 @@ mod tests {
             .unwrap();
         let mut builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
-        if let Err(e) = poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) }).await {
-            panic!("request service is not ready: {}", e);
-        }
+        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) }).await.expect("request service is not ready");
         let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();
         let body = resp.into_body();
         let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
