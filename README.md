@@ -12,8 +12,6 @@
 [![Contributors](https://img.shields.io/github/contributors/routerify/routerify.svg)](https://github.com/orgs/routerify/people)
 [![MIT](https://img.shields.io/crates/l/routerify.svg)](./LICENSE)
 
-# Looking for a maintainer. Please ping me at hello@rousan.io, if anyone is interested to actively maintain this project.
-
 # Routerify
 
 The `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
