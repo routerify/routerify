@@ -30,9 +30,9 @@ impl Serve {
 pub async fn serve<B, E>(router: Router<B, E>) -> Serve
 where
     B: HttpBody + Send + Sync + Unpin + 'static,
-    E: std::error::Error + Send + Sync + Unpin + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
     <B as HttpBody>::Data: Send + Sync + 'static,
-    <B as HttpBody>::Error: std::error::Error + Send + Sync + 'static,
+    <B as HttpBody>::Error: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
 {
     let service = RouterService::new(router).unwrap();
     let server = Server::bind(&([127, 0, 0, 1], 0).into()).serve(service);

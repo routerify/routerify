@@ -12,17 +12,23 @@ pub struct RequestService<B, E> {
     pub(crate) remote_addr: SocketAddr,
 }
 
-unsafe impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Send
-    for RequestService<B, E>
+unsafe impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Send for RequestService<B, E>
 {
 }
-unsafe impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Sync
-    for RequestService<B, E>
+unsafe impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Sync for RequestService<B, E>
 {
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Service<Request<hyper::Body>> for RequestService<B, E>
+impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
     type Error = crate::Error;
