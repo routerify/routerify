@@ -89,7 +89,11 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static> Router<B, E> {
+impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Router<B, E>
+{
     pub(crate) fn new(
         pre_middlewares: Vec<PreMiddleware<E>>,
         routes: Vec<Route<B, E>>,
