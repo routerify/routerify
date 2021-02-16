@@ -69,8 +69,10 @@ pub struct RouterService<B, E> {
     router: Router<B, E>,
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    RouterService<B, E>
+impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > RouterService<B, E>
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
@@ -207,8 +209,10 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
     }
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Service<&AddrStream> for RouterService<B, E>
+impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Service<&AddrStream> for RouterService<B, E>
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;

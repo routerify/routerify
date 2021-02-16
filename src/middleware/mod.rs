@@ -25,8 +25,10 @@ pub enum Middleware<B, E> {
     Post(PostMiddleware<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
-    Middleware<B, E>
+impl<
+        B: HttpBody + Send + Sync + Unpin + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+    > Middleware<B, E>
 {
     /// Creates a pre middleware with a handler at the `/*` path.
     ///

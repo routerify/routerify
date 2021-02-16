@@ -31,6 +31,30 @@ async fn can_perform_simple_get_request() {
 }
 
 #[tokio::test]
+async fn can_perform_simple_get_request_boxed_error() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    type BoxedError = Box<dyn std::error::Error + Sync + Send + 'static>;
+    let router: Router<Body, BoxedError> = Router::builder()
+        .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
 async fn can_respond_with_data_from_scope_state() {
     // Creating two modules containing separate state and routes which expose that state directly...
     mod service1 {
