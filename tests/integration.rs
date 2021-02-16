@@ -1,8 +1,7 @@
 use self::support::{into_text, serve};
-use http::HeaderValue;
 use hyper::{Body, Client, Request, Response};
 use routerify::prelude::RequestExt;
-use routerify::{Middleware, Router};
+use routerify::Router;
 use std::io;
 use std::sync::{Arc, Mutex};
 
