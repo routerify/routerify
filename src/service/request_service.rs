@@ -8,6 +8,13 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 pub struct RequestService<B, E> {
+    // Here, We are storing the router pointer instead of the whole router ownership
+    // to handle multiple parallel connections very efficiently. If we have used Arc<Router>,
+    // then the server performance could be affected due to frequent locking on the
+    // mutable router object. Also as the we need the mutable Router instance, the Rust runtime
+    // will not allow to have multiple simultaneous router mutable instances, so it will panic in that case.
+    // Hence, we only have one solution to use this unsafe code.
+    // Any other alternative approach is welcome to avoid unsafe code.
     pub(crate) router: *mut Router<B, E>,
     pub(crate) remote_addr: SocketAddr,
 }
