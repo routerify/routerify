@@ -1,6 +1,6 @@
 use crate::helpers;
 use crate::router::Router;
-use crate::types::{RequestInfo, RequestMeta};
+use crate::types::{RequestContext, RequestInfo, RequestMeta};
 use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
@@ -63,9 +63,13 @@ impl<
                 .should_gen_req_info
                 .expect("The `should_gen_req_info` flag in Router is not initialized");
 
+            let context = RequestContext::new();
+
             if should_gen_req_info {
-                req_info = Some(RequestInfo::new_from_req(&req));
+                req_info = Some(RequestInfo::new_from_req(&req, context.clone()));
             }
+
+            req.extensions_mut().insert(context);
 
             match router.process(target_path.as_str(), req, req_info.clone()).await {
                 Ok(resp) => crate::Result::Ok(resp),

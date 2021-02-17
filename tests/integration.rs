@@ -1,7 +1,7 @@
 use self::support::{into_text, serve};
-use hyper::{Body, Client, Request, Response};
+use hyper::{Body, Client, Request, Response, StatusCode};
 use routerify::prelude::RequestExt;
-use routerify::Router;
+use routerify::{Middleware, RequestInfo, Router};
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -119,6 +119,83 @@ async fn can_respond_with_data_from_scope_state() {
         .unwrap();
     assert_eq!(200, resp.status().as_u16());
     assert_eq!(into_text(resp.into_body()).await, "2");
+
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_propagate_request_context() {
+    use std::io;
+    #[derive(Debug, Clone, PartialEq)]
+    struct Id(u32);
+
+    let before = |req: Request<Body>| async move {
+        req.set_context(Id(42));
+        Ok(req)
+    };
+
+    let index = |req: Request<Body>| async move {
+        // Check `id` from `before()`.
+        let id = req.context::<Id>().unwrap();
+        assert_eq!(id, Id(42));
+
+        // Check that non-existent context value is None.
+        let none = req.context::<u64>();
+        assert!(none.is_none());
+
+        // Add a String value to the context.
+        req.set_context("index".to_string());
+
+        // Trigger this error in order to invoke
+        // the error handler.
+        Err(io::Error::new(io::ErrorKind::AddrInUse, "bogus error"))
+    };
+
+    let error_handler = |_err, req_info: RequestInfo| async move {
+        // Check `id` from `before()`.
+        let id = req_info.context::<Id>().unwrap();
+        assert_eq!(id, Id(42));
+
+        // Check String from `index()`.
+        let name = req_info.context::<String>().unwrap();
+        assert_eq!(name, "index");
+
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Body::from("Something went wrong"))
+            .unwrap()
+    };
+
+    let after = |res, req_info: RequestInfo| async move {
+        // Check `id` from `before()`.
+        let id = req_info.context::<Id>().unwrap();
+        assert_eq!(id, Id(42));
+
+        // Check String from `index()`.
+        let name = req_info.context::<String>().unwrap();
+        assert_eq!(name, "index");
+
+        Ok(res)
+    };
+
+    let router: Router<Body, std::io::Error> = Router::builder()
+        .middleware(Middleware::pre(before))
+        .middleware(Middleware::post_with_info(after))
+        .err_handler_with_info(error_handler)
+        .get("/", index)
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
     serve.shutdown();
 }
