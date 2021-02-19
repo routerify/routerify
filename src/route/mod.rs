@@ -94,7 +94,7 @@ impl<
         target_path: &str,
         mut req: Request<hyper::Body>,
     ) -> crate::Result<Response<B>> {
-        self.push_req_meta(target_path, &mut req)?;
+        self.push_req_meta(target_path, &mut req);
 
         let handler = self
             .handler
@@ -106,16 +106,15 @@ impl<
             .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
     }
 
-    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {
-        self.update_req_meta(req, self.generate_req_meta(target_path)?);
-        Ok(())
+    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {
+        self.update_req_meta(req, self.generate_req_meta(target_path));
     }
 
     fn update_req_meta(&self, req: &mut Request<hyper::Body>, req_meta: RequestMeta) {
         helpers::update_req_meta_in_extensions(req.extensions_mut(), req_meta);
     }
 
-    fn generate_req_meta(&self, target_path: &str) -> crate::Result<RequestMeta> {
+    fn generate_req_meta(&self, target_path: &str) -> RequestMeta {
         let route_params_list = &self.route_params;
         let ln = route_params_list.len();
 
@@ -123,15 +122,16 @@ impl<
 
         if ln > 0 {
             if let Some(caps) = self.regex.captures(target_path) {
-                for idx in 0..ln {
-                    if let Some(g) = caps.get(idx + 1) {
-                        route_params.set(route_params_list[idx].clone(), g.as_str());
+                let mut iter = caps.iter();
+                for param in route_params_list {
+                    if let Some(Some(g)) = iter.next() {
+                        route_params.set(param.clone(), g.as_str());
                     }
                 }
             }
         }
 
-        Ok(RequestMeta::with_route_params(route_params))
+        RequestMeta::with_route_params(route_params)
     }
 }
 

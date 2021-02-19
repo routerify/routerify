@@ -126,24 +126,20 @@ impl<
         Ok(())
     }
 
-    pub(crate) fn init_req_info_gen(&mut self) -> crate::Result<()> {
-        if let Some(ref err_handler) = self.err_handler {
-            if let ErrHandler::WithInfo(_) = err_handler {
-                self.should_gen_req_info = Some(true);
-                return Ok(());
-            }
+    pub(crate) fn init_req_info_gen(&mut self) {
+        if let Some(ErrHandler::WithInfo (_) ) = self.err_handler {
+            self.should_gen_req_info = Some(true);
+            return;
         }
 
         for post_middleware in self.post_middlewares.iter() {
             if post_middleware.should_require_req_meta() {
                 self.should_gen_req_info = Some(true);
-                return Ok(());
+                return;
             }
         }
 
         self.should_gen_req_info = Some(false);
-
-        Ok(())
     }
 
     /// Return a [RouterBuilder](./struct.RouterBuilder.html) instance to build a `Router`.
@@ -171,7 +167,7 @@ impl<
 
         if let Some(ref mut req_info) = req_info {
             if !shared_data_maps.is_empty() {
-                req_info.shared_data_maps.replace(Box::new(shared_data_maps.clone()));
+                req_info.shared_data_maps.replace(shared_data_maps.clone());
             }
         }
 

@@ -11,7 +11,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct RequestInfo {
     pub(crate) req_info_inner: Arc<RequestInfoInner>,
-    pub(crate) shared_data_maps: Option<Box<Vec<SharedDataMap>>>,
+    pub(crate) shared_data_maps: Option<Vec<SharedDataMap>>,
     pub(crate) context: RequestContext,
 }
 
@@ -72,7 +72,7 @@ impl RequestInfo {
             }
         }
 
-        return None;
+        None
     }
 
     /// Access data from the request context.
