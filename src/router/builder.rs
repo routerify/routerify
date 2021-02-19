@@ -513,8 +513,8 @@ impl<
         self.and_then(move |mut inner| {
             let mut path = path.into();
 
-            if !path.ends_with("/") && !path.ends_with("*") {
-                path.push_str("/");
+            if !path.ends_with('/') && !path.ends_with('*') {
+                path.push('/');
             }
 
             let route = Route::new(path, methods, handler)?;
@@ -563,7 +563,7 @@ impl<
     {
         let mut path = path.into();
 
-        if path.ends_with("/") {
+        if path.ends_with('/') {
             path = (&path[..path.len() - 1]).to_string();
         }
 

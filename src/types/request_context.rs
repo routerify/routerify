@@ -25,6 +25,6 @@ impl RequestContext {
     }
 
     pub(crate) fn get<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {
-        self.inner.lock().unwrap().get::<T>().map(|val| val.clone())
+        self.inner.lock().unwrap().get::<T>().cloned()
     }
 }

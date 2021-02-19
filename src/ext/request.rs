@@ -154,7 +154,7 @@ impl RequestExt for Request<hyper::Body> {
             }
         }
 
-        return None;
+        None
     }
 
     fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {

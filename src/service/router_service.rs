@@ -86,7 +86,7 @@ impl<
         Self::init_router_with_err_handler(&mut router);
 
         router.init_regex_set()?;
-        router.init_req_info_gen()?;
+        router.init_req_info_gen();
 
         Ok(RouterService { router })
     }
