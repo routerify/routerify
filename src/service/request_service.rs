@@ -6,35 +6,16 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::sync::Arc;
 
 pub struct RequestService<B, E> {
-    // Here, We are storing the router pointer instead of the whole router ownership
-    // to handle multiple parallel connections very efficiently. If we have used Arc<Router>,
-    // then the server performance could be affected due to frequent locking on the
-    // mutable router object. Also as the we need the mutable Router instance, the Rust runtime
-    // will not allow to have multiple simultaneous router mutable instances, so it will panic in that case.
-    // Hence, we only have one solution to use this unsafe code.
-    // Any other alternative approach is welcome to avoid unsafe code.
-    pub(crate) router: *const Router<B, E>,
+    pub(crate) router: Arc<Router<B, E>>,
     pub(crate) remote_addr: SocketAddr,
 }
 
-unsafe impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Send for RequestService<B, E>
-{
-}
-unsafe impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Sync for RequestService<B, E>
-{
-}
-
 impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+        B: HttpBody + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
     > Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
@@ -46,7 +27,7 @@ impl<
     }
 
     fn call(&mut self, mut req: Request<hyper::Body>) -> Self::Future {
-        let router = unsafe { &*self.router };
+        let router = self.router.clone();
         let remote_addr = self.remote_addr;
 
         let fut = async move {

@@ -54,8 +54,8 @@ pub struct Route<B, E> {
 }
 
 impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+        B: HttpBody + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
     > Route<B, E>
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(

@@ -22,7 +22,7 @@ pub struct PreMiddleware<E> {
     pub(crate) handler: Option<Handler<E>>,
 }
 
-impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static> PreMiddleware<E> {
+impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<E> {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         handler: Handler<E>,

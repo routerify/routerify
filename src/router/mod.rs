@@ -78,7 +78,7 @@ pub(crate) enum ErrHandler<B> {
     WithInfo(ErrHandlerWithInfo<B>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
+impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
     pub(crate) async fn execute(&self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
             ErrHandler::WithoutInfo(ref err_handler) => Pin::from(err_handler(err)).await,
@@ -90,8 +90,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
 }
 
 impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+        B: HttpBody + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
     > Router<B, E>
 {
     pub(crate) fn new(
