@@ -15,7 +15,7 @@ pub struct RequestService<B, E> {
     // will not allow to have multiple simultaneous router mutable instances, so it will panic in that case.
     // Hence, we only have one solution to use this unsafe code.
     // Any other alternative approach is welcome to avoid unsafe code.
-    pub(crate) router: *mut Router<B, E>,
+    pub(crate) router: *const Router<B, E>,
     pub(crate) remote_addr: SocketAddr,
 }
 
@@ -46,7 +46,7 @@ impl<
     }
 
     fn call(&mut self, mut req: Request<hyper::Body>) -> Self::Future {
-        let router = unsafe { &mut *self.router };
+        let router = unsafe { &*self.router };
         let remote_addr = self.remote_addr;
 
         let fut = async move {
@@ -74,7 +74,7 @@ impl<
             match router.process(target_path.as_str(), req, req_info.clone()).await {
                 Ok(resp) => crate::Result::Ok(resp),
                 Err(err) => {
-                    if let Some(ref mut err_handler) = router.err_handler {
+                    if let Some(ref err_handler) = router.err_handler {
                         crate::Result::Ok(err_handler.execute(err, req_info.clone()).await)
                     } else {
                         crate::Result::Err(err)

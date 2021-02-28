@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
+type Handler<B, E> = Box<dyn Fn(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// Represents a single route.
@@ -75,10 +75,10 @@ impl<
         })
     }
 
-    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, mut handler: H) -> crate::Result<Route<B, E>>
+    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, handler: H) -> crate::Result<Route<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
@@ -90,7 +90,7 @@ impl<
     }
 
     pub(crate) async fn process(
-        &mut self,
+        &self,
         target_path: &str,
         mut req: Request<hyper::Body>,
     ) -> crate::Result<Response<B>> {
@@ -98,7 +98,7 @@ impl<
 
         let handler = self
             .handler
-            .as_mut()
+            .as_ref()
             .expect("A router can not be used after mounting into another router");
 
         Pin::from(handler(req))

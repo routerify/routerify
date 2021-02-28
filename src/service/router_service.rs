@@ -226,7 +226,7 @@ impl<
         let remote_addr = conn.remote_addr();
 
         let req_service = RequestService {
-            router: &mut self.router,
+            router: &self.router,
             remote_addr,
         };
 
