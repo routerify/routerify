@@ -14,11 +14,11 @@ pub use self::builder::RouterBuilder;
 mod builder;
 
 pub(crate) type ErrHandlerWithoutInfo<B> =
-    Box<dyn FnMut(crate::Error) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(crate::Error) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithoutInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 pub(crate) type ErrHandlerWithInfo<B> =
-    Box<dyn FnMut(crate::Error, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(crate::Error, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 /// Represents a modular, lightweight and mountable router type.
@@ -78,11 +78,11 @@ pub(crate) enum ErrHandler<B> {
     WithInfo(ErrHandlerWithInfo<B>),
 }
 
-impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
-    pub(crate) async fn execute(&mut self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
+impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
+    pub(crate) async fn execute(&self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
-            ErrHandler::WithoutInfo(ref mut err_handler) => Pin::from(err_handler(err)).await,
-            ErrHandler::WithInfo(ref mut err_handler) => {
+            ErrHandler::WithoutInfo(ref err_handler) => Pin::from(err_handler(err)).await,
+            ErrHandler::WithInfo(ref err_handler) => {
                 Pin::from(err_handler(err, req_info.expect("No RequestInfo is provided"))).await
             }
         }
@@ -90,8 +90,8 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static> ErrHandler<B> {
 }
 
 impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
+        B: HttpBody + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
     > Router<B, E>
 {
     pub(crate) fn new(
@@ -148,7 +148,7 @@ impl<
     }
 
     pub(crate) async fn process(
-        &mut self,
+        &self,
         target_path: &str,
         mut req: Request<hyper::Body>,
         mut req_info: Option<RequestInfo>,
@@ -176,14 +176,14 @@ impl<
 
         let mut transformed_req = req;
         for idx in matched_pre_middleware_idxs {
-            let pre_middleware = &mut self.pre_middlewares[idx];
+            let pre_middleware = &self.pre_middlewares[idx];
 
             transformed_req = pre_middleware.process(transformed_req).await?;
         }
 
         let mut resp = None;
         for idx in matched_route_idxs {
-            let route = &mut self.routes[idx];
+            let route = &self.routes[idx];
 
             if route.is_match_method(transformed_req.method()) {
                 let route_resp_res = route.process(target_path, transformed_req).await;
@@ -191,7 +191,7 @@ impl<
                 let route_resp = match route_resp_res {
                     Ok(route_resp) => route_resp,
                     Err(err) => {
-                        if let Some(ref mut err_handler) = self.err_handler {
+                        if let Some(ref err_handler) = self.err_handler {
                             err_handler.execute(err, req_info.clone()).await
                         } else {
                             return Err(err);
@@ -210,7 +210,7 @@ impl<
 
         let mut transformed_res = resp.unwrap();
         for idx in matched_post_middleware_idxs {
-            let post_middleware = &mut self.post_middlewares[idx];
+            let post_middleware = &self.post_middlewares[idx];
             transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
         }
 
