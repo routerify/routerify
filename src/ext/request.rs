@@ -1,5 +1,5 @@
 use crate::data_map::SharedDataMap;
-use crate::types::{RequestMeta, RouteParams};
+use crate::types::{RequestContext, RequestMeta, RouteParams};
 use hyper::Request;
 use std::net::SocketAddr;
 
@@ -88,6 +88,39 @@ pub trait RequestExt {
     ///
     /// Please refer to the [Data and State Sharing](../index.html#data-and-state-sharing) for more info.
     fn data<T: Send + Sync + 'static>(&self) -> Option<&T>;
+
+    /// Access data in the request context.
+    fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T>;
+
+    /// Put data into the request context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, RouteParams, Middleware};
+    /// use routerify::ext::RequestExt;
+    /// use hyper::{Response, Request, Body};
+    /// # use std::convert::Infallible;
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///     .middleware(Middleware::pre(|req: Request<Body>| async move {
+    ///         req.set_context("example".to_string());
+    ///
+    ///         Ok(req)
+    ///     }))
+    ///     .get("/hello", |req| async move {
+    ///         let text = req.context::<String>().unwrap();
+    ///
+    ///         Ok(Response::new(Body::from(format!("Hello from : {}", text))))
+    ///      })
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    fn set_context<T: Send + Sync + Clone + 'static>(&self, val: T);
 }
 
 impl RequestExt for Request<hyper::Body> {
@@ -121,6 +154,22 @@ impl RequestExt for Request<hyper::Body> {
             }
         }
 
-        return None;
+        None
+    }
+
+    fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {
+        let ctx = self
+            .extensions()
+            .get::<RequestContext>()
+            .expect("Context must be present");
+        ctx.get::<T>()
+    }
+
+    fn set_context<T: Send + Sync + Clone + 'static>(&self, val: T) {
+        let ctx = self
+            .extensions()
+            .get::<RequestContext>()
+            .expect("Context must be present");
+        ctx.set(val)
     }
 }

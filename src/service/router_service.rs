@@ -15,6 +15,7 @@ use std::any::Any;
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
@@ -66,13 +67,11 @@ use std::task::{Context, Poll};
 /// ```
 #[derive(Debug)]
 pub struct RouterService<B, E> {
-    router: Router<B, E>,
+    router: Arc<Router<B, E>>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > RouterService<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RouterService<B, E>
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
@@ -86,9 +85,11 @@ impl<
         Self::init_router_with_err_handler(&mut router);
 
         router.init_regex_set()?;
-        router.init_req_info_gen()?;
+        router.init_req_info_gen();
 
-        Ok(RouterService { router })
+        Ok(RouterService {
+            router: Arc::new(router),
+        })
     }
 
     fn init_router_with_x_powered_by_middleware(router: &mut Router<B, E>) {
@@ -209,10 +210,8 @@ impl<
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Service<&AddrStream> for RouterService<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    Service<&AddrStream> for RouterService<B, E>
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;
@@ -226,7 +225,7 @@ impl<
         let remote_addr = conn.remote_addr();
 
         let req_service = RequestService {
-            router: &mut self.router,
+            router: self.router.clone(),
             remote_addr,
         };
 

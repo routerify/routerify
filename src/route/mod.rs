@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
+type Handler<B, E> = Box<dyn Fn(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// Represents a single route.
@@ -53,11 +53,7 @@ pub struct Route<B, E> {
     pub(crate) methods: Vec<Method>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Route<B, E>
-{
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         methods: Vec<Method>,
@@ -75,10 +71,10 @@ impl<
         })
     }
 
-    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, mut handler: H) -> crate::Result<Route<B, E>>
+    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, handler: H) -> crate::Result<Route<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
@@ -89,16 +85,12 @@ impl<
         self.methods.contains(method)
     }
 
-    pub(crate) async fn process(
-        &mut self,
-        target_path: &str,
-        mut req: Request<hyper::Body>,
-    ) -> crate::Result<Response<B>> {
-        self.push_req_meta(target_path, &mut req)?;
+    pub(crate) async fn process(&self, target_path: &str, mut req: Request<hyper::Body>) -> crate::Result<Response<B>> {
+        self.push_req_meta(target_path, &mut req);
 
         let handler = self
             .handler
-            .as_mut()
+            .as_ref()
             .expect("A router can not be used after mounting into another router");
 
         Pin::from(handler(req))
@@ -106,16 +98,15 @@ impl<
             .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
     }
 
-    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) -> crate::Result<()> {
-        self.update_req_meta(req, self.generate_req_meta(target_path)?);
-        Ok(())
+    fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {
+        self.update_req_meta(req, self.generate_req_meta(target_path));
     }
 
     fn update_req_meta(&self, req: &mut Request<hyper::Body>, req_meta: RequestMeta) {
         helpers::update_req_meta_in_extensions(req.extensions_mut(), req_meta);
     }
 
-    fn generate_req_meta(&self, target_path: &str) -> crate::Result<RequestMeta> {
+    fn generate_req_meta(&self, target_path: &str) -> RequestMeta {
         let route_params_list = &self.route_params;
         let ln = route_params_list.len();
 
@@ -123,15 +114,16 @@ impl<
 
         if ln > 0 {
             if let Some(caps) = self.regex.captures(target_path) {
-                for idx in 0..ln {
-                    if let Some(g) = caps.get(idx + 1) {
-                        route_params.set(route_params_list[idx].clone(), g.as_str());
+                let mut iter = caps.iter();
+                for param in route_params_list {
+                    if let Some(Some(g)) = iter.next() {
+                        route_params.set(param.clone(), g.as_str());
                     }
                 }
             }
         }
 
-        Ok(RequestMeta::with_route_params(route_params))
+        RequestMeta::with_route_params(route_params)
     }
 }
 

@@ -1,3 +1,4 @@
+use super::RequestContext;
 use crate::data_map::SharedDataMap;
 use hyper::{Body, HeaderMap, Method, Request, Uri, Version};
 use std::fmt::{self, Debug, Formatter};
@@ -10,7 +11,8 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct RequestInfo {
     pub(crate) req_info_inner: Arc<RequestInfoInner>,
-    pub(crate) shared_data_maps: Option<Box<Vec<SharedDataMap>>>,
+    pub(crate) shared_data_maps: Option<Vec<SharedDataMap>>,
+    pub(crate) context: RequestContext,
 }
 
 #[derive(Debug)]
@@ -22,7 +24,7 @@ pub(crate) struct RequestInfoInner {
 }
 
 impl RequestInfo {
-    pub(crate) fn new_from_req(req: &Request<Body>) -> Self {
+    pub(crate) fn new_from_req(req: &Request<Body>, ctx: RequestContext) -> Self {
         let inner = RequestInfoInner {
             headers: req.headers().clone(),
             method: req.method().clone(),
@@ -33,6 +35,7 @@ impl RequestInfo {
         RequestInfo {
             req_info_inner: Arc::new(inner),
             shared_data_maps: None,
+            context: ctx,
         }
     }
 
@@ -69,7 +72,45 @@ impl RequestInfo {
             }
         }
 
-        return None;
+        None
+    }
+
+    /// Access data from the request context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, RouteParams, Middleware, RequestInfo};
+    /// use routerify::ext::RequestExt;
+    /// use hyper::{Response, Request, Body};
+    /// # use std::convert::Infallible;
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///     .middleware(Middleware::pre(|req: Request<Body>| async move {
+    ///         req.set_context("example".to_string());
+    ///
+    ///         Ok(req)
+    ///     }))
+    ///     .middleware(Middleware::post_with_info(|res, req_info: RequestInfo| async move {
+    ///         let text = req_info.context::<String>().unwrap();
+    ///         println!("text is {}", text);
+    ///
+    ///         Ok(res)
+    ///     }))
+    ///     .get("/hello", |req| async move {
+    ///         let text = req.context::<String>().unwrap();
+    ///
+    ///         Ok(Response::new(Body::from(format!("Hello from : {}", text))))
+    ///      })
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    pub fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {
+        self.context.get::<T>()
     }
 }
 
