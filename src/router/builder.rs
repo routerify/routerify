@@ -62,10 +62,8 @@ struct BuilderInner<B, E> {
     err_handler: Option<ErrHandler<B>>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > RouterBuilder<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RouterBuilder<B, E>
 {
     /// Creates a new `RouterBuilder` instance with default options.
     pub fn new() -> RouterBuilder<B, E> {
@@ -107,10 +105,8 @@ impl<
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > RouterBuilder<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RouterBuilder<B, E>
 {
     /// Adds a new route with `GET` method and the handler at the specified path.
     ///
@@ -637,10 +633,8 @@ impl<
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > RouterBuilder<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RouterBuilder<B, E>
 {
     /// Adds a single middleware. A pre middleware can be created by [`Middleware::pre`](./enum.Middleware.html#method.pre) method and a post
     /// middleware can be created by [`Middleware::post`](./enum.Middleware.html#method.post) method.
@@ -735,10 +729,8 @@ impl<
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > Default for RouterBuilder<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Default
+    for RouterBuilder<B, E>
 {
     fn default() -> RouterBuilder<B, E> {
         RouterBuilder {

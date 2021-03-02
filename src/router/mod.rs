@@ -89,11 +89,7 @@ impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > Router<B, E>
-{
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Router<B, E> {
     pub(crate) fn new(
         pre_middlewares: Vec<PreMiddleware<E>>,
         routes: Vec<Route<B, E>>,
@@ -127,7 +123,7 @@ impl<
     }
 
     pub(crate) fn init_req_info_gen(&mut self) {
-        if let Some(ErrHandler::WithInfo (_) ) = self.err_handler {
+        if let Some(ErrHandler::WithInfo(_)) = self.err_handler {
             self.should_gen_req_info = Some(true);
             return;
         }
