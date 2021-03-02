@@ -53,11 +53,7 @@ pub struct Route<B, E> {
     pub(crate) methods: Vec<Method>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > Route<B, E>
-{
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         methods: Vec<Method>,
@@ -89,11 +85,7 @@ impl<
         self.methods.contains(method)
     }
 
-    pub(crate) async fn process(
-        &self,
-        target_path: &str,
-        mut req: Request<hyper::Body>,
-    ) -> crate::Result<Response<B>> {
+    pub(crate) async fn process(&self, target_path: &str, mut req: Request<hyper::Body>) -> crate::Result<Response<B>> {
         self.push_req_meta(target_path, &mut req);
 
         let handler = self

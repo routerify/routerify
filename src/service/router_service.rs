@@ -15,8 +15,8 @@ use std::any::Any;
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.13.5/hyper/service/trait.Service.html) to process incoming requests.
 ///
@@ -70,10 +70,8 @@ pub struct RouterService<B, E> {
     router: Arc<Router<B, E>>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > RouterService<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RouterService<B, E>
 {
     /// Creates a new service with the provided router and it's ready to be used with the hyper [`serve`](https://docs.rs/hyper/0.13.5/hyper/server/struct.Builder.html#method.serve)
     /// method.
@@ -89,7 +87,9 @@ impl<
         router.init_regex_set()?;
         router.init_req_info_gen();
 
-        Ok(RouterService { router: Arc::new(router) })
+        Ok(RouterService {
+            router: Arc::new(router),
+        })
     }
 
     fn init_router_with_x_powered_by_middleware(router: &mut Router<B, E>) {
@@ -210,10 +210,8 @@ impl<
     }
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > Service<&AddrStream> for RouterService<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    Service<&AddrStream> for RouterService<B, E>
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;

@@ -35,10 +35,8 @@ pub(crate) enum Handler<B, E> {
     WithInfo(HandlerWithInfo<B, E>),
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > PostMiddleware<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    PostMiddleware<B, E>
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
@@ -131,11 +129,7 @@ impl<
         }
     }
 
-    pub(crate) async fn process(
-        &self,
-        res: Response<B>,
-        req_info: Option<RequestInfo>,
-    ) -> crate::Result<Response<B>> {
+    pub(crate) async fn process(&self, res: Response<B>, req_info: Option<RequestInfo>) -> crate::Result<Response<B>> {
         let handler = self
             .handler
             .as_ref()
@@ -145,11 +139,9 @@ impl<
             Handler::WithoutInfo(ref handler) => Pin::from(handler(res))
                 .await
                 .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
-            Handler::WithInfo(ref handler) => {
-                Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
-                    .await
-                    .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into()))
-            }
+            Handler::WithInfo(ref handler) => Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
+                .await
+                .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into())),
         }
     }
 }

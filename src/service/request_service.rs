@@ -5,18 +5,16 @@ use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
 pub struct RequestService<B, E> {
     pub(crate) router: Arc<Router<B, E>>,
     pub(crate) remote_addr: SocketAddr,
 }
 
-impl<
-        B: HttpBody + Send + Sync + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
-    > Service<Request<hyper::Body>> for RequestService<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
     type Error = crate::Error;
