@@ -55,7 +55,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "2.0.0-beta-3"
+routerify = "2.0.0-beta-4"
 ```
 
 ## Basic Example
