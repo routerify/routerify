@@ -199,3 +199,32 @@ async fn can_propagate_request_context() {
 
     serve.shutdown();
 }
+
+#[tokio::test]
+async fn can_extract_path_params() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/api/:first/plus/:second", |req| async move {
+            let first = req.param("first").unwrap();
+            let second = req.param("second").unwrap();
+            assert_eq!(first, "40");
+            assert_eq!(second, "2");
+            Ok(Response::new(RESPONSE_TEXT.into()))
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/40/plus/2", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
