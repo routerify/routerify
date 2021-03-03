@@ -31,6 +31,19 @@
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
 
+## Benchmarks
+
+| Framework      | Language    | Requests/sec |
+|----------------|-------------|--------------|
+| [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,583 |
+| [routerify v2.0.0-beta-4](https://github.com/routerify/routerify) with [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,621 |
+| [actix-web v3](https://github.com/actix/actix-web) | Rust 1.50.0 | 131,292 |
+| [warp v0.3](https://github.com/seanmonstar/warp) | Rust 1.50.0 | 145,362 |
+| [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.16 | 130,662 |
+| [Rocket, branch master](https://github.com/SergioBenitez/Rocket) | Rust 1.50.0 | 130,045 |
+
+For more info, please visit [Benchmarks](https://github.com/routerify/routerify-benchmark).
+
 ## Install
 
 Add this to your `Cargo.toml` file:
