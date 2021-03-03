@@ -16,17 +16,15 @@
 
 `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper](https://hyper.rs/).
 
-`Routerify` offers the following features:
+Routerify's core features:
 
-- 📡 Allows defining complex routing logic.
-- 🔨 Provides middleware support.
-- 🌀 Supports Route Parameters.
-- 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.4.3/regex/struct.RegexSet.html) to match routes. 
-- 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html) trait.
-- ❗ Provides a flexible error handling strategy.
-- 💁 Provides `WebSocket` [support](https://github.com/routerify/routerify-websocket) out of the box.
-- 🔥 Allows data/state sharing across the route and middleware handlers.
-- 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
+- 🌀 Design complex routing using **scopes** and **middlewares**
+- 🚀 Fast route matching using [`RegexSet`](https://docs.rs/regex/1.4.3/regex/struct.RegexSet.html)
+- 🍺 Route handlers may return any [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html)
+- ❗ Flexible error handling strategy
+- 💁 [`WebSocket` support](https://github.com/routerify/routerify-websocket) out of the box.
+- 🔥 Route handlers and middleware may share state
+- 🍗 Extensive documentation and [examples](https://github.com/routerify/routerify/tree/master/examples)
 
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
