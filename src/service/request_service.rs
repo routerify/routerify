@@ -89,9 +89,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             router: Arc::from(router),
         })
     }
-}
 
-impl<B, E> RequestServiceBuilder<B, E> {
     pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
         RequestService {
             router: self.router.clone(),
@@ -126,7 +124,9 @@ mod tests {
             .unwrap();
         let mut builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
-        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) }).await.expect("request service is not ready");
+        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) })
+            .await
+            .expect("request service is not ready");
         let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();
         let body = resp.into_body();
         let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
