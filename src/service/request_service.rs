@@ -65,3 +65,71 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         Box::pin(fut)
     }
 }
+
+#[derive(Debug)]
+pub struct RequestServiceBuilder<B, E> {
+    router: Arc<Router<B, E>>,
+}
+
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    RequestServiceBuilder<B, E>
+{
+    pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
+        router.init_x_powered_by_middleware();
+        // router.init_keep_alive_middleware();
+
+        router.init_global_options_route();
+        router.init_default_404_route();
+
+        router.init_err_handler();
+
+        router.init_regex_set()?;
+        router.init_req_info_gen();
+        Ok(Self {
+            router: Arc::from(router),
+        })
+    }
+
+    pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
+        RequestService {
+            router: self.router.clone(),
+            remote_addr,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Error, RequestServiceBuilder, Router};
+    use futures::future::poll_fn;
+    use http::Method;
+    use hyper::service::Service;
+    use hyper::{Body, Request, Response};
+    use std::net::SocketAddr;
+    use std::str::FromStr;
+    use std::task::Poll;
+
+    #[tokio::test]
+    async fn should_route_request() {
+        const RESPONSE_TEXT: &str = "Hello world!";
+        let remote_addr = SocketAddr::from_str("0.0.0.0:8080").unwrap();
+        let router: Router<hyper::body::Body, Error> = Router::builder()
+            .get("/", |_| async move { Ok(Response::new(Body::from(RESPONSE_TEXT))) })
+            .build()
+            .unwrap();
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri("/")
+            .body(hyper::Body::empty())
+            .unwrap();
+        let mut builder = RequestServiceBuilder::new(router).unwrap();
+        let mut service = builder.build(remote_addr);
+        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) })
+            .await
+            .expect("request service is not ready");
+        let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();
+        let body = resp.into_body();
+        let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
+        assert_eq!(RESPONSE_TEXT, body)
+    }
+}
