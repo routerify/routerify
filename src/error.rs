@@ -27,4 +27,7 @@ pub enum Error {
 
     #[error("One of the post middlewares (with info) couldn't process the response")]
     HandlePostMiddlewareWithInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("A route was unable to handle the request due to the maximum size being exceeded {0} {1}")]
+    HandleOverSizeRequest(u64, u64),
 }

@@ -1,10 +1,10 @@
-use crate::constants;
 use crate::data_map::{DataMap, ScopedDataMap};
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
 use crate::router::{ErrHandler, ErrHandlerWithInfo, ErrHandlerWithoutInfo};
 use crate::types::RequestInfo;
+use crate::{constants, SizeUnit};
 use hyper::{body::HttpBody, Method, Request, Response};
 use std::collections::HashMap;
 use std::future::Future;
@@ -60,6 +60,7 @@ struct BuilderInner<B, E> {
     post_middlewares: Vec<PostMiddleware<B, E>>,
     data_maps: HashMap<String, Vec<DataMap>>,
     err_handler: Option<ErrHandler<B>>,
+    max_size: u64,
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
@@ -91,6 +92,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 inner.post_middlewares,
                 scoped_data_maps,
                 inner.err_handler,
+                inner.max_size,
             ))
         })
     }
@@ -693,6 +695,19 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         })
     }
 
+    /// Specify a maximum request length
+    pub fn max_size(self, size: u64, unit: SizeUnit) -> Self {
+        self.and_then(move |mut inner| {
+            inner.max_size = match unit {
+                SizeUnit::Bytes => size,
+                SizeUnit::Kilobytes => size * 1024,
+                SizeUnit::Megabytes => size * 1024 * 1024,
+                SizeUnit::Gigabyes => size * 1024 * 1024 * 1024,
+            };
+            crate::Result::Ok(inner)
+        })
+    }
+
     /// Adds a handler to handle any error raised by the routes or any middlewares. Please refer to [Error Handling](./index.html#error-handling) section
     /// for more info.
     pub fn err_handler<H, R>(self, handler: H) -> Self
@@ -740,6 +755,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 post_middlewares: Vec::new(),
                 data_maps: HashMap::new(),
                 err_handler: None,
+                max_size: 0,
             }),
         }
     }

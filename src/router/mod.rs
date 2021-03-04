@@ -4,11 +4,7 @@ use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::types::RequestInfo;
 use crate::Error;
-use hyper::{
-    body::HttpBody,
-    header::{self, HeaderValue},
-    Method, Request, Response, StatusCode,
-};
+use hyper::{Method, Request, Response, StatusCode, body::HttpBody, header::{self, HeaderValue}};
 use regex::RegexSet;
 use std::any::Any;
 use std::fmt::{self, Debug, Formatter};
@@ -67,6 +63,7 @@ pub struct Router<B, E> {
     pub(crate) routes: Vec<Route<B, E>>,
     pub(crate) post_middlewares: Vec<PostMiddleware<B, E>>,
     pub(crate) scoped_data_maps: Vec<ScopedDataMap>,
+    pub(crate) max_size: u64,
 
     // This handler should be added only on root Router.
     // Any error handler attached to scoped router will be ignored.
@@ -102,12 +99,14 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         post_middlewares: Vec<PostMiddleware<B, E>>,
         scoped_data_maps: Vec<ScopedDataMap>,
         err_handler: Option<ErrHandler<B>>,
+        max_size: u64,
     ) -> Self {
         Router {
             pre_middlewares,
             routes,
             post_middlewares,
             scoped_data_maps,
+            max_size,
             err_handler,
             regex_set: None,
             should_gen_req_info: None,
@@ -288,6 +287,22 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             if !shared_data_maps.is_empty() {
                 req_info.shared_data_maps.replace(shared_data_maps.clone());
             }
+        }
+
+        if self.max_size > 0 {
+            // Here we just check the request headers for Content Length
+            // Hyper only reads the amount specified by this header
+            // So additional checks should be unneccessary
+            if let Some(length) = req.headers().get("Content-Length") {
+                let size = length.to_str().unwrap().parse::<u64>().unwrap();
+                if size > self.max_size {
+                    return Err(Error::HandleOverSizeRequest(self.max_size, size));
+                }
+            }
+            // Error if we cannot find the header
+            // else {
+            //    return Err(Error::HandleOverSizeRequest(self.max_size, 0))
+            // }
         }
 
         let ext = req.extensions_mut();
