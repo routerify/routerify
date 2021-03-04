@@ -127,7 +127,7 @@ impl<
     }
 
     pub(crate) fn init_req_info_gen(&mut self) {
-        if let Some(ErrHandler::WithInfo (_) ) = self.err_handler {
+        if let Some(ErrHandler::WithInfo(_)) = self.err_handler {
             self.should_gen_req_info = Some(true);
             return;
         }
