@@ -3,7 +3,7 @@ use crate::types::{RequestContext, RequestMeta, RouteParams};
 use hyper::Request;
 use std::net::SocketAddr;
 
-/// A extension trait which extends the [`hyper::Request`](https://docs.rs/hyper/0.13.5/hyper/struct.Request.html) type with some helpful methods.
+/// A extension trait which extends the [`hyper::Request`](https://docs.rs/hyper/0.14.4/hyper/struct.Request.html) type with some helpful methods.
 pub trait RequestExt {
     /// It returns the route parameters as [RouteParams](../struct.RouteParams.html) type with the name of the parameter specified in the path as their respective keys.
     ///

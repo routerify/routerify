@@ -7,11 +7,11 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type HandlerWithoutInfo<B, E> = Box<dyn FnMut(Response<B>) -> HandlerWithoutInfoReturn<B, E> + Send + Sync + 'static>;
+type HandlerWithoutInfo<B, E> = Box<dyn Fn(Response<B>) -> HandlerWithoutInfoReturn<B, E> + Send + Sync + 'static>;
 type HandlerWithoutInfoReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 type HandlerWithInfo<B, E> =
-    Box<dyn FnMut(Response<B>, RequestInfo) -> HandlerWithInfoReturn<B, E> + Send + Sync + 'static>;
+    Box<dyn Fn(Response<B>, RequestInfo) -> HandlerWithInfoReturn<B, E> + Send + Sync + 'static>;
 type HandlerWithInfoReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// The post middleware type. Refer to [Post Middleware](./index.html#post-middleware) for more info.
@@ -19,7 +19,7 @@ type HandlerWithInfoReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E
 /// This `PostMiddleware<B, E>` type accepts two type parameters: `B` and `E`.
 ///
 /// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
-///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   the [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.14.4/hyper/body/struct.Body.html)
 ///   type.
 /// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 pub struct PostMiddleware<B, E> {
@@ -35,10 +35,8 @@ pub(crate) enum Handler<B, E> {
     WithInfo(HandlerWithInfo<B, E>),
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > PostMiddleware<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    PostMiddleware<B, E>
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
@@ -72,10 +70,10 @@ impl<
     /// # }
     /// # run();
     /// ```
-    pub fn new<P, H, R>(path: P, mut handler: H) -> crate::Result<PostMiddleware<B, E>>
+    pub fn new<P, H, R>(path: P, handler: H) -> crate::Result<PostMiddleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Response<B>) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: HandlerWithoutInfo<B, E> = Box::new(move |res: Response<B>| Box::new(handler(res)));
@@ -109,10 +107,10 @@ impl<
     /// # }
     /// # run();
     /// ```
-    pub fn new_with_info<P, H, R>(path: P, mut handler: H) -> crate::Result<PostMiddleware<B, E>>
+    pub fn new_with_info<P, H, R>(path: P, handler: H) -> crate::Result<PostMiddleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: HandlerWithInfo<B, E> =
@@ -131,25 +129,19 @@ impl<
         }
     }
 
-    pub(crate) async fn process(
-        &mut self,
-        res: Response<B>,
-        req_info: Option<RequestInfo>,
-    ) -> crate::Result<Response<B>> {
+    pub(crate) async fn process(&self, res: Response<B>, req_info: Option<RequestInfo>) -> crate::Result<Response<B>> {
         let handler = self
             .handler
-            .as_mut()
+            .as_ref()
             .expect("A router can not be used after mounting into another router");
 
         match handler {
-            Handler::WithoutInfo(ref mut handler) => Pin::from(handler(res))
+            Handler::WithoutInfo(ref handler) => Pin::from(handler(res))
                 .await
                 .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
-            Handler::WithInfo(ref mut handler) => {
-                Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
-                    .await
-                    .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into()))
-            }
+            Handler::WithInfo(ref handler) => Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
+                .await
+                .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into())),
         }
     }
 }

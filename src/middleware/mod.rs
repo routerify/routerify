@@ -13,7 +13,7 @@ mod pre;
 /// This `Middleware<B, E>` type accepts two type parameters: `B` and `E`.
 ///
 /// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
-///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   the [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.14.4/hyper/body/struct.Body.html)
 ///   type.
 /// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 #[derive(Debug)]
@@ -25,10 +25,8 @@ pub enum Middleware<B, E> {
     Post(PostMiddleware<B, E>),
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Middleware<B, E>
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+    Middleware<B, E>
 {
     /// Creates a pre middleware with a handler at the `/*` path.
     ///
@@ -50,7 +48,7 @@ impl<
     /// ```
     pub fn pre<H, R>(handler: H) -> Middleware<B, E>
     where
-        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
     {
         Middleware::pre_with_path("/*", handler).unwrap()
@@ -76,7 +74,7 @@ impl<
     /// ```
     pub fn post<H, R>(handler: H) -> Middleware<B, E>
     where
-        H: FnMut(Response<B>) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         Middleware::post_with_path("/*", handler).unwrap()
@@ -111,7 +109,7 @@ impl<
     /// ```
     pub fn post_with_info<H, R>(handler: H) -> Middleware<B, E>
     where
-        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         Middleware::post_with_info_with_path("/*", handler).unwrap()
@@ -138,7 +136,7 @@ impl<
     pub fn pre_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
     {
         Ok(Middleware::Pre(PreMiddleware::new(path, handler)?))
@@ -165,7 +163,7 @@ impl<
     pub fn post_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Response<B>) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         Ok(Middleware::Post(PostMiddleware::new(path, handler)?))
@@ -201,7 +199,7 @@ impl<
     pub fn post_with_info_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
+        H: Fn(Response<B>, RequestInfo) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         Ok(Middleware::Post(PostMiddleware::new_with_info(path, handler)?))

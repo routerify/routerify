@@ -26,4 +26,4 @@ Run an example:
 
 * [`scoped_router`](scoped_router.rs) - Shows how to write modular routing logic by mounting a router on another router.
 
-* [`using_stream_body`](using_stream_body.rs) - An example on how to use a different response body type ([StreamBody](https://github.com/rousan/stream-body)) other than `hyper::Body`.
+* [`request_duration`](request_duration.rs) - Shows how to measure the duration of a request using per request context and middleware.

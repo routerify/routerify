@@ -14,38 +14,31 @@
 
 # Routerify
 
-The `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
+`Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper](https://hyper.rs/).
 
-There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
-is one of them, and it provides only low level API. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
-by providing that missing feature without compromising any performance.
+Routerify's core features:
 
-The `Routerify` offers the following features:
-
-- 📡 Allows defining complex routing logic.
-- 🔨 Provides middleware support.
-- 🌀 Supports Route Parameters.
-- 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.3.7/regex/struct.RegexSet.html) to match routes. 
-- 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
-- ❗ Provides a flexible error handling strategy.
-- 💁 Provides `WebSocket` [support](https://github.com/routerify/routerify-websocket) out of the box.
-- 🔥 Allows data/state sharing across the route and middleware handlers.
-- 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
+- 🌀 Design complex routing using [scopes](https://github.com/routerify/routerify/blob/master/examples/scoped_router.rs) and [middlewares](https://github.com/routerify/routerify/blob/master/examples/middleware.rs)
+- 🚀 Fast route matching using [`RegexSet`](https://docs.rs/regex/1.4.3/regex/struct.RegexSet.html)
+- 🍺 Route handlers may return any [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html)
+- ❗ Flexible [error handling](https://github.com/routerify/routerify/blob/master/examples/error_handling_with_request_info.rs) strategy
+- 💁 [`WebSocket` support](https://github.com/routerify/routerify-websocket) out of the box.
+- 🔥 Route handlers and middleware [may share state](https://github.com/routerify/routerify/blob/master/examples/share_data_and_state.rs)
+- 🍗 [Extensive documentation](https://docs.rs/routerify/) and [examples](https://github.com/routerify/routerify/tree/master/examples)
 
 
-To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
+To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
 
 ## Benchmarks
 
 | Framework      | Language    | Requests/sec |
 |----------------|-------------|--------------|
-| [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,557 |
-| [routerify v1.1](https://github.com/routerify/routerify) with [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,320 |
-| [gotham v0.4.0](https://github.com/gotham-rs/gotham) | Rust 1.43.0 | 100,097 |
-| [actix-web v2](https://github.com/actix/actix-web) | Rust 1.43.0 | 96,397 |
-| [warp v0.2](https://github.com/seanmonstar/warp) | Rust 1.43.0 | 81,912 |
-| [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.13.7 | 74,958 |
-| [Rocket, branch async](https://github.com/SergioBenitez/Rocket) | Rust 1.43.0 | 2,041 ? |
+| [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,583 |
+| [routerify v2.0.0-beta-4](https://github.com/routerify/routerify) with [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,621 |
+| [actix-web v3](https://github.com/actix/actix-web) | Rust 1.50.0 | 131,292 |
+| [warp v0.3](https://github.com/seanmonstar/warp) | Rust 1.50.0 | 145,362 |
+| [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.16 | 130,662 |
+| [Rocket, branch master](https://github.com/SergioBenitez/Rocket) | Rust 1.50.0 | 130,045 |
 
 For more info, please visit [Benchmarks](https://github.com/routerify/routerify-benchmark).
 
@@ -55,12 +48,14 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "2.0.0-beta-2"
+routerify = "2.0.0-beta-4"
+hyper = "0.14"
+tokio = { version = "1", features = ["full"] }
 ```
 
 ## Basic Example
 
-A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
+A simple example using `Routerify` with `hyper` would look like the following:
 
 ```rust
 use hyper::{Body, Request, Response, Server, StatusCode};

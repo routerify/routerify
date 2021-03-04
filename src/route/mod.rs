@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 
-type Handler<B, E> = Box<dyn FnMut(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
+type Handler<B, E> = Box<dyn Fn(Request<hyper::Body>) -> HandlerReturn<B, E> + Send + Sync + 'static>;
 type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Send + 'static>;
 
 /// Represents a single route.
@@ -19,7 +19,7 @@ type HandlerReturn<B, E> = Box<dyn Future<Output = Result<Response<B>, E>> + Sen
 /// This `Route<B, E>` type accepts two type parameters: `B` and `E`.
 ///
 /// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
-///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   the [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.14.4/hyper/body/struct.Body.html)
 ///   type.
 /// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 ///
@@ -53,11 +53,7 @@ pub struct Route<B, E> {
     pub(crate) methods: Vec<Method>,
 }
 
-impl<
-        B: HttpBody + Send + Sync + Unpin + 'static,
-        E: Into<Box<dyn std::error::Error + Send + Sync>> + Unpin + 'static,
-    > Route<B, E>
-{
+impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         methods: Vec<Method>,
@@ -75,10 +71,10 @@ impl<
         })
     }
 
-    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, mut handler: H) -> crate::Result<Route<B, E>>
+    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, handler: H) -> crate::Result<Route<B, E>>
     where
         P: Into<String>,
-        H: FnMut(Request<hyper::Body>) -> R + Send + Sync + 'static,
+        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
@@ -89,16 +85,12 @@ impl<
         self.methods.contains(method)
     }
 
-    pub(crate) async fn process(
-        &mut self,
-        target_path: &str,
-        mut req: Request<hyper::Body>,
-    ) -> crate::Result<Response<B>> {
+    pub(crate) async fn process(&self, target_path: &str, mut req: Request<hyper::Body>) -> crate::Result<Response<B>> {
         self.push_req_meta(target_path, &mut req);
 
         let handler = self
             .handler
-            .as_mut()
+            .as_ref()
             .expect("A router can not be used after mounting into another router");
 
         Pin::from(handler(req))
@@ -123,6 +115,8 @@ impl<
         if ln > 0 {
             if let Some(caps) = self.regex.captures(target_path) {
                 let mut iter = caps.iter();
+                // Skip the first match because it's the whole path.
+                iter.next();
                 for param in route_params_list {
                     if let Some(Some(g)) = iter.next() {
                         route_params.set(param.clone(), g.as_str());

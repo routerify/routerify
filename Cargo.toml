@@ -1,6 +1,6 @@
 [package]
 name = "routerify"
-version = "2.0.0-beta-2"
+version = "2.0.0-beta-4"
 description = "A lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library hyper.rs."
 homepage = "https://github.com/routerify/routerify"
 repository = "https://github.com/routerify/routerify"
@@ -31,3 +31,11 @@ thiserror = "1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+futures = { version = "0.3" }
+
+# For the AWS Lambda example
+aws_lambda_events = "0.4.0"
+lambda_http = { package = "netlify_lambda_http", version = "0.2.0" }
+slog = "2"
+sloggers = "1.0"
+url = "2"
