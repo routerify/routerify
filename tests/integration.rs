@@ -255,7 +255,7 @@ async fn maximum_size_test() {
                 .unwrap())
         })
         .err_handler(error_handler)
-        .max_size(32, SizeUnit::Bytes)
+        .max_size(32, SizeUnit::Byte)
         .build()
         .unwrap();
     let serve = serve(router).await;

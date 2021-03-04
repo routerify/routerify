@@ -696,13 +696,30 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     }
 
     /// Specify a maximum request length
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::{Router, SizeUnit};
+    /// use hyper::Body;
+    /// use std::convert::Infallible;
+    ///
+    /// # fn run() -> Router<Body, Infallible> {
+    /// let router = Router::builder()
+    ///      // Set the maximum request size to 1024 Kilobytes
+    ///      .max_size(1024, SizeUnit::Kilo)
+    ///      .build()
+    ///      .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
     pub fn max_size(self, size: u64, unit: SizeUnit) -> Self {
         self.and_then(move |mut inner| {
             inner.max_size = match unit {
-                SizeUnit::Bytes => size,
-                SizeUnit::Kilobytes => size * 1024,
-                SizeUnit::Megabytes => size * 1024 * 1024,
-                SizeUnit::Gigabyes => size * 1024 * 1024 * 1024,
+                SizeUnit::Byte => size,
+                SizeUnit::Kilo => size * 1024,
+                SizeUnit::Mega => size * 1024 * 1024,
+                SizeUnit::Giga => size * 1024 * 1024 * 1024,
             };
             crate::Result::Ok(inner)
         })
