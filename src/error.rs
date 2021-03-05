@@ -27,4 +27,19 @@ pub enum Error {
 
     #[error("One of the post middlewares (with info) couldn't process the response")]
     HandlePostMiddlewareWithInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("{0}")]
+    Custom(String),
+    #[error("{0}")]
+    Wrapped(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+}
+impl Error {
+    pub fn new(s: impl AsRef<str>) -> Self {
+        Self::Custom(s.as_ref().to_owned())
+    }
+    pub fn wrap<E>(e: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::Wrapped(Box::new(e))
+    }
 }
