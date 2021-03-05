@@ -38,8 +38,8 @@ impl Error {
     }
     pub fn wrap<E>(e: E) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
     {
-        Self::Wrapped(Box::new(e))
+        Self::Wrapped(e.into())
     }
 }
