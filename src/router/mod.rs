@@ -4,7 +4,11 @@ use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::types::RequestInfo;
 use crate::Error;
-use hyper::{Method, Request, Response, StatusCode, body::HttpBody, header::{self, HeaderValue}};
+use hyper::{
+    body::HttpBody,
+    header::{self, HeaderValue},
+    Method, Request, Response, StatusCode,
+};
 use regex::RegexSet;
 use std::any::Any;
 use std::fmt::{self, Debug, Formatter};
@@ -63,7 +67,6 @@ pub struct Router<B, E> {
     pub(crate) routes: Vec<Route<B, E>>,
     pub(crate) post_middlewares: Vec<PostMiddleware<B, E>>,
     pub(crate) scoped_data_maps: Vec<ScopedDataMap>,
-    pub(crate) max_size: u64,
 
     // This handler should be added only on root Router.
     // Any error handler attached to scoped router will be ignored.
@@ -99,14 +102,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         post_middlewares: Vec<PostMiddleware<B, E>>,
         scoped_data_maps: Vec<ScopedDataMap>,
         err_handler: Option<ErrHandler<B>>,
-        max_size: u64,
     ) -> Self {
         Router {
             pre_middlewares,
             routes,
             post_middlewares,
             scoped_data_maps,
-            max_size,
             err_handler,
             regex_set: None,
             should_gen_req_info: None,
@@ -179,12 +180,17 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let options_route: Route<hyper::Body, E> = Route::new("/*", options_method, |_req| async move {
-                Ok(Response::builder()
-                    .status(StatusCode::NO_CONTENT)
-                    .body(hyper::Body::empty())
-                    .expect("Couldn't create the default OPTIONS response"))
-            })
+            let options_route: Route<hyper::Body, E> = Route::new(
+                "/*",
+                options_method,
+                |_req| async move {
+                    Ok(Response::builder()
+                        .status(StatusCode::NO_CONTENT)
+                        .body(hyper::Body::empty())
+                        .expect("Couldn't create the default OPTIONS response"))
+                },
+                0,
+            )
             .unwrap();
 
             router.routes.push(options_route);
@@ -207,15 +213,19 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let default_404_route: Route<hyper::Body, E> =
-                Route::new("/*", constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(), |_req| async move {
+            let default_404_route: Route<hyper::Body, E> = Route::new(
+                "/*",
+                constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(),
+                |_req| async move {
                     Ok(Response::builder()
                         .status(StatusCode::NOT_FOUND)
                         .header(header::CONTENT_TYPE, "text/plain")
                         .body(hyper::Body::from(StatusCode::NOT_FOUND.canonical_reason().unwrap()))
                         .expect("Couldn't create the default 404 response"))
-                })
-                .unwrap();
+                },
+                0,
+            )
+            .unwrap();
             router.routes.push(default_404_route);
         } else {
             eprintln!(
@@ -289,22 +299,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             }
         }
 
-        if self.max_size > 0 {
-            // Here we just check the request headers for Content Length
-            // Hyper only reads the amount specified by this header
-            // So additional checks should be unneccessary
-            if let Some(length) = req.headers().get("Content-Length") {
-                let size = length.to_str().unwrap().parse::<u64>().unwrap();
-                if size > self.max_size {
-                    return Err(Error::HandleOverSizeRequest(self.max_size, size));
-                }
-            }
-            // Error if we cannot find the header
-            // else {
-            //    return Err(Error::HandleOverSizeRequest(self.max_size, 0))
-            // }
-        }
-
         let ext = req.extensions_mut();
         ext.insert(shared_data_maps);
 
@@ -320,6 +314,21 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             let route = &self.routes[idx];
 
             if route.is_match_method(transformed_req.method()) {
+                if route.max_size > 0 {
+                    // Here we just check the request headers for Content Length
+                    // Hyper only reads the amount specified by this header
+                    // So additional checks should be unneccessary
+                    if let Some(length) = transformed_req.headers().get("Content-Length") {
+                        let size = length.to_str().unwrap().parse::<u64>().unwrap();
+                        if size > route.max_size {
+                            return Err(Error::HandleOverSizeRequest(route.max_size, size));
+                        }
+                    }
+                    // Error if we cannot find the header
+                    // else {
+                    //    return Err(Error::HandleOverSizeRequest(self.max_size, 0))
+                    // }
+                }
                 let route_resp_res = route.process(target_path, transformed_req).await;
 
                 let route_resp = match route_resp_res {

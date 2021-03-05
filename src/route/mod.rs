@@ -51,6 +51,7 @@ pub struct Route<B, E> {
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<B, E>>,
     pub(crate) methods: Vec<Method>,
+    pub(crate) max_size: u64,
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
@@ -58,6 +59,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         path: P,
         methods: Vec<Method>,
         handler: Handler<B, E>,
+        max_size: u64,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
         let (re, params) = generate_exact_match_regex(path.as_str())?;
@@ -68,17 +70,18 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             route_params: params,
             handler: Some(handler),
             methods,
+            max_size,
         })
     }
 
-    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, handler: H) -> crate::Result<Route<B, E>>
+    pub(crate) fn new<P, H, R>(path: P, methods: Vec<Method>, handler: H, max_size: u64) -> crate::Result<Route<B, E>>
     where
         P: Into<String>,
         H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
-        Route::new_with_boxed_handler(path, methods, handler)
+        Route::new_with_boxed_handler(path, methods, handler, max_size)
     }
 
     pub(crate) fn is_match_method(&self, method: &Method) -> bool {

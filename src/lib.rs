@@ -767,7 +767,6 @@ pub use self::router::{Router, RouterBuilder};
 pub use self::service::RequestService;
 pub use self::service::RequestServiceBuilder;
 pub use self::service::RouterService;
-pub use self::size_unit::SizeUnit;
 pub use self::types::{RequestInfo, RouteParams};
 
 mod constants;
@@ -781,7 +780,6 @@ mod regex_generator;
 mod route;
 mod router;
 mod service;
-mod size_unit;
 mod types;
 
 /// A Result type often returned from methods that can have routerify errors.

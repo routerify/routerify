@@ -1,10 +1,10 @@
+use crate::constants;
 use crate::data_map::{DataMap, ScopedDataMap};
 use crate::middleware::{Middleware, PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::router::Router;
 use crate::router::{ErrHandler, ErrHandlerWithInfo, ErrHandlerWithoutInfo};
 use crate::types::RequestInfo;
-use crate::{constants, SizeUnit};
 use hyper::{body::HttpBody, Method, Request, Response};
 use std::collections::HashMap;
 use std::future::Future;
@@ -92,7 +92,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 inner.post_middlewares,
                 scoped_data_maps,
                 inner.err_handler,
-                inner.max_size,
             ))
         })
     }
@@ -515,7 +514,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 path.push('/');
             }
 
-            let route = Route::new(path, methods, handler)?;
+            let route = Route::new(path, methods, handler, inner.max_size)?;
             inner.routes.push(route);
 
             crate::Result::Ok(inner)
@@ -586,6 +585,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 format!("{}{}", path.as_str(), route.path.as_str()),
                 route.methods.clone(),
                 route.handler.take().expect("No handler found in one of the routes"),
+                route.max_size,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.routes.push(new_route?);
@@ -699,28 +699,27 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     /// # Examples
     ///
     /// ```
-    /// use routerify::{Router, SizeUnit};
-    /// use hyper::Body;
+    /// use routerify::Router;
+    /// use hyper::{Body, Response};
     /// use std::convert::Infallible;
     ///
     /// # fn run() -> Router<Body, Infallible> {
     /// let router = Router::builder()
-    ///      // Set the maximum request size to 1024 Kilobytes
-    ///      .max_size(1024, SizeUnit::Kilo)
+    ///      // Routes below this point have a maximum request size of 1024 Kilobytes
+    ///      .max_size(1024*1024)
+    ///      .get("/a/", |req| async move { Ok(Response::new(Body::from("Route A"))) })
+    ///      // Routes below this point have a maximum request size of 1 Kilobyte
+    ///      .max_size(1024)
+    ///      .get("/b/", |req| async move { Ok(Response::new(Body::from("Route B"))) })
     ///      .build()
     ///      .unwrap();
     /// # router
     /// # }
     /// # run();
     /// ```
-    pub fn max_size(self, size: u64, unit: SizeUnit) -> Self {
+    pub fn max_size(self, size: u64) -> Self {
         self.and_then(move |mut inner| {
-            inner.max_size = match unit {
-                SizeUnit::Byte => size,
-                SizeUnit::Kilo => size * 1024,
-                SizeUnit::Mega => size * 1024 * 1024,
-                SizeUnit::Giga => size * 1024 * 1024 * 1024,
-            };
+            inner.max_size = size;
             crate::Result::Ok(inner)
         })
     }

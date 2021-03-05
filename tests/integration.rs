@@ -1,6 +1,6 @@
 use self::support::{into_text, serve};
 use hyper::{Body, Client, Request, Response, StatusCode};
-use routerify::{prelude::RequestExt, SizeUnit};
+use routerify::prelude::RequestExt;
 use routerify::{Middleware, RequestInfo, Router};
 use std::io;
 use std::sync::{Arc, Mutex};
@@ -249,13 +249,13 @@ async fn maximum_size_test() {
     };
 
     let router: Router<Body, routerify::Error> = Router::builder()
+        .max_size(32)
         .get("/", |_| async move {
             Ok(Response::builder()
                 .body(Body::from("This request should not succeed"))
                 .unwrap())
         })
         .err_handler(error_handler)
-        .max_size(32, SizeUnit::Byte)
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -271,5 +271,79 @@ async fn maximum_size_test() {
         .unwrap();
     let resp = into_text(resp.into_body()).await;
     assert_eq!(resp, "Recieved incorrectly sized request. Expected: 32, Recieved: 34");
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn scoped_max_size() {
+    let error_handler = |err| async move {
+        let resp = match err {
+            routerify::Error::HandleOverSizeRequest(max, recv) => {
+                format!(
+                    "Recieved incorrectly sized request. Expected: {}, Recieved: {}",
+                    max, recv
+                )
+            }
+            _ => "This response should not appear.".to_owned(),
+        };
+
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Body::from(resp))
+            .unwrap()
+    };
+
+    let scoped: Router<Body, routerify::Error> = Router::builder()
+        .max_size(64)
+        .get("/", |_| async move {
+            Ok(Response::builder()
+                .body(Body::from("This request should succeed"))
+                .unwrap())
+        })
+        .err_handler(error_handler)
+        .build()
+        .unwrap();
+
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .max_size(32)
+        .get("/", |_| async move {
+            Ok(Response::builder()
+                .body(Body::from("This request should not succeed"))
+                .unwrap())
+        })
+        .scope("/scoped", scoped)
+        .err_handler(error_handler)
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/", serve.addr()))
+                .body(Body::from("This will exceed the maximum size."))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let resp2 = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/scoped/", serve.addr()))
+                .body(Body::from("This won't exceed the maximum size."))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let resp = into_text(resp.into_body()).await;
+    let resp2 = into_text(resp2.into_body()).await;
+    assert_eq!(resp, "Recieved incorrectly sized request. Expected: 32, Recieved: 34");
+    assert_eq!(resp2, "This request should succeed");
+
     serve.shutdown();
 }
