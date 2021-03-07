@@ -12,9 +12,9 @@ async fn about_handler(_: Request<Body>) -> Result<Response<Body>, routerify::Er
     Ok(Response::new(Body::from("About page")))
 }
 
-// Define an error handler function which will accept the `routerify::HandleError`
+// Define an error handler function which will accept the `routerify::RouteError`
 // and generates an appropriate response.
-async fn error_handler(err: routerify::HandleError) -> Response<Body> {
+async fn error_handler(err: routerify::RouteError) -> Response<Body> {
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from(err.to_string()))

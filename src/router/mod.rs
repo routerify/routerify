@@ -3,7 +3,7 @@ use crate::data_map::ScopedDataMap;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::types::RequestInfo;
-use crate::HandleError;
+use crate::RouteError;
 use hyper::{
     body::HttpBody,
     header::{self, HeaderValue},
@@ -20,11 +20,11 @@ pub use self::builder::RouterBuilder;
 mod builder;
 
 pub(crate) type ErrHandlerWithoutInfo<B> =
-    Box<dyn Fn(HandleError) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(RouteError) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithoutInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 pub(crate) type ErrHandlerWithInfo<B> =
-    Box<dyn Fn(HandleError, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(RouteError, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 /// Represents a modular, lightweight and mountable router type.
@@ -85,7 +85,7 @@ pub(crate) enum ErrHandler<B> {
 }
 
 impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
-    pub(crate) async fn execute(&self, err: HandleError, req_info: Option<RequestInfo>) -> Response<B> {
+    pub(crate) async fn execute(&self, err: RouteError, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
             ErrHandler::WithoutInfo(ref err_handler) => Pin::from(err_handler(err)).await,
             ErrHandler::WithInfo(ref err_handler) => {
@@ -234,7 +234,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: HandleError| {
+            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: RouteError| {
                 Box::new(async move {
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)

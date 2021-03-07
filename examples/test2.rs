@@ -28,7 +28,7 @@ pub async fn home_handler(req: Request<Body>) -> Result<Response<Body>, routerif
     Err(routerify::Error::new("Error"))
 }
 
-async fn error_handler(err: routerify::HandleError, req_info: RequestInfo) -> Response<Body> {
+async fn error_handler(err: routerify::RouteError, req_info: RequestInfo) -> Response<Body> {
     let data = req_info.data::<State>().map(|s| s.0).unwrap_or(0);
     println!("Error Data: {}", data);
     println!("Error Data2: {:?}", req_info.data::<u32>());

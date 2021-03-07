@@ -31,10 +31,10 @@ async fn home_handler(_: Request<Body>) -> Result<Response<Body>, ApiError> {
     Err(ApiError::Generic("Something went wrong!".into()))
 }
 
-// Define an error handler function which will accept the `routerify::HandleError`
+// Define an error handler function which will accept the `routerify::RouteError`
 // and generates an appropriate response.
-async fn error_handler(err: routerify::HandleError) -> Response<Body> {
-    // Because `routerify::HandleError` is a boxed error, it must be
+async fn error_handler(err: routerify::RouteError) -> Response<Body> {
+    // Because `routerify::RouteError` is a boxed error, it must be
     // downcasted first. Unwrap for simplicity.
     let api_err = err.downcast::<ApiError>().unwrap();
 

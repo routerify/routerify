@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// The error type used by the error handlers.
-pub type HandleError = Box<dyn StdError + Send + Sync + 'static>;
+pub type RouteError = Box<dyn StdError + Send + Sync + 'static>;
 
 /// Simple string error for compatibility with Routerify v1.
 /// Can be used in return types of handlers and middleware.

@@ -1,7 +1,7 @@
 use self::support::{into_text, serve};
 use hyper::{Body, Client, Request, Response, StatusCode};
 use routerify::prelude::RequestExt;
-use routerify::{HandleError, Middleware, RequestInfo, Router};
+use routerify::{Middleware, RequestInfo, RouteError, Router};
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -12,7 +12,7 @@ async fn can_perform_simple_get_request() {
     const RESPONSE_TEXT: &str = "Hello world";
     let router: Router<Body, routerify::Error> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
-        .err_handler(|_: HandleError| async move { todo!() })
+        .err_handler(|_: RouteError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -37,7 +37,7 @@ async fn can_perform_simple_get_request_boxed_error() {
     type BoxedError = Box<dyn std::error::Error + Sync + Send + 'static>;
     let router: Router<Body, BoxedError> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
-        .err_handler(|_: HandleError| async move { todo!() })
+        .err_handler(|_: RouteError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -240,10 +240,18 @@ async fn do_not_execute_scoped_middleware_for_unscoped_path() {
         .build()
         .unwrap();
 
-    let router: Router<Body, routerify::Error> = Router::builder()
-        .get("/", |_| async { Ok(Response::new("".into())) })
-        .scope("/api", api_router)
-        .get("/api/login", |_| async { Ok(Response::new("".into())) })
+    const RESPONSE_TEXT: &str = "Something went wrong!";
+    let router: Router<Body, ApiError> = Router::builder()
+        .get("/", |_| async move { Err(ApiError::Generic(RESPONSE_TEXT.into())) })
+        .err_handler(|err: RouteError| async move {
+            let api_err = err.downcast::<ApiError>().unwrap();
+            match api_err.as_ref() {
+                ApiError::Generic(s) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::from(s.to_string()))
+                    .unwrap(),
+            }
+        })
         .build()
         .unwrap();
 
