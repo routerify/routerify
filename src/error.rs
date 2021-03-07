@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 /// The error type used by the error handlers.
 pub type HandleError = Box<dyn StdError + Send + Sync + 'static>;
 
-/// The error type for simple string errors for compatibility with Routerify v1.
+/// Simple string error for compatibility with Routerify v1.
 /// Can be used in return types of handlers and middleware.
 pub struct Error {
     msg: String,

@@ -696,8 +696,14 @@
 //!
 //! ## Error Handling
 //!
-//! Any route or middleware could go wrong and throws an error. `Routerify` tries to add a default error handler in some cases. But, it also
-//! allow to attach a custom error handler. The error handler generates a response based on the error and the request info(optional).
+//! Any route or middleware could go wrong and throw an error. `Routerify` tries to add a default error handler in some cases. But, it also
+//! allows to attach a custom error handler. The error handler generates a response based on the error and the request info (optional).
+//!
+//! Routes and middleware may return any error type. The type must be the same for all routes, middleware and a router instance.
+//! The error is boxed into [`HandleError`](./type.HandleError.html)
+//! and propagated into an error handler. There, the original error is accessible after downcasting.
+//! See this [example](https://github.com/routerify/routerify/tree/master/examples/error_handling_with_custom_errors.rs)
+//! for handling custom errors.
 //!
 //! Here is an basic example:
 //!
