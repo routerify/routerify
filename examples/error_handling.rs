@@ -1,38 +1,27 @@
 use hyper::{Body, Request, Response, Server, StatusCode};
 use routerify::{Router, RouterService};
-use std::io;
 use std::net::SocketAddr;
 
 // A handler for "/" page.
-async fn home_handler(_: Request<Body>) -> Result<Response<Body>, io::Error> {
-    Err(io::Error::new(io::ErrorKind::Other, "Some errors"))
+async fn home_handler(_: Request<Body>) -> Result<Response<Body>, routerify::Error> {
+    Err(routerify::Error::new("Some errors"))
 }
 
 // A handler for "/about" page.
-async fn about_handler(_: Request<Body>) -> Result<Response<Body>, io::Error> {
+async fn about_handler(_: Request<Body>) -> Result<Response<Body>, routerify::Error> {
     Ok(Response::new(Body::from("About page")))
 }
 
-fn format_cause_chain(err: impl std::error::Error) -> String {
-    let mut lines = vec![format!("error: {}", err)];
-    let mut source = err.source();
-    while let Some(src) = source {
-        lines.push(format!("  caused by: {}", src));
-        source = src.source();
-    }
-    lines.join("\n")
-}
-
-// Define an error handler function which will accept the `routerify::Error`
+// Define an error handler function which will accept the `routerify::HandleError`
 // and generates an appropriate response.
-async fn error_handler(err: routerify::Error) -> Response<Body> {
+async fn error_handler(err: routerify::HandleError) -> Response<Body> {
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(Body::from(format_cause_chain(err)))
+        .body(Body::from(err.to_string()))
         .unwrap()
 }
 
-fn router() -> Router<Body, io::Error> {
+fn router() -> Router<Body, routerify::Error> {
     // Create a router and specify the the handlers.
     Router::builder()
         .get("/", home_handler)

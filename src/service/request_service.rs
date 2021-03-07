@@ -17,7 +17,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
-    type Error = crate::Error;
+    type Error = crate::HandleError;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -89,6 +89,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             router: Arc::from(router),
         })
     }
+
     pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
         RequestService {
             router: self.router.clone(),
@@ -99,7 +100,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 
 #[cfg(test)]
 mod tests {
-    use crate::{Error, RequestServiceBuilder, Router};
+    use crate::{Error, HandleError, RequestServiceBuilder, Router};
     use futures::future::poll_fn;
     use http::Method;
     use hyper::service::Service;
@@ -123,7 +124,7 @@ mod tests {
             .unwrap();
         let mut builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
-        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) })
+        poll_fn(|ctx| -> Poll<Result<(), HandleError>> { service.poll_ready(ctx) })
             .await
             .expect("request service is not ready");
         let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();

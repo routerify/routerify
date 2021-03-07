@@ -1,5 +1,4 @@
 use crate::regex_generator::generate_exact_match_regex;
-use crate::Error;
 use hyper::Request;
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -75,9 +74,7 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
             .as_ref()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req))
-            .await
-            .map_err(|e| Error::HandlePreMiddlewareRequest(e.into()))
+        Pin::from(handler(req)).await.map_err(Into::into)
     }
 }
 

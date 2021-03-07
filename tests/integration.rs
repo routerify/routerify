@@ -1,7 +1,7 @@
 use self::support::{into_text, serve};
 use hyper::{Body, Client, Request, Response, StatusCode};
 use routerify::prelude::RequestExt;
-use routerify::{Middleware, RequestInfo, Router};
+use routerify::{HandleError, Middleware, RequestInfo, Router};
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -12,6 +12,7 @@ async fn can_perform_simple_get_request() {
     const RESPONSE_TEXT: &str = "Hello world";
     let router: Router<Body, routerify::Error> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
+        .err_handler(|_: HandleError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -36,6 +37,7 @@ async fn can_perform_simple_get_request_boxed_error() {
     type BoxedError = Box<dyn std::error::Error + Sync + Send + 'static>;
     let router: Router<Body, BoxedError> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
+        .err_handler(|_: HandleError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;

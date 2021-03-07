@@ -3,7 +3,7 @@ use crate::data_map::ScopedDataMap;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::types::RequestInfo;
-use crate::Error;
+use crate::HandleError;
 use hyper::{
     body::HttpBody,
     header::{self, HeaderValue},
@@ -20,11 +20,11 @@ pub use self::builder::RouterBuilder;
 mod builder;
 
 pub(crate) type ErrHandlerWithoutInfo<B> =
-    Box<dyn Fn(crate::Error) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(HandleError) -> ErrHandlerWithoutInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithoutInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 pub(crate) type ErrHandlerWithInfo<B> =
-    Box<dyn Fn(crate::Error, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
+    Box<dyn Fn(HandleError, RequestInfo) -> ErrHandlerWithInfoReturn<B> + Send + Sync + 'static>;
 pub(crate) type ErrHandlerWithInfoReturn<B> = Box<dyn Future<Output = Response<B>> + Send + 'static>;
 
 /// Represents a modular, lightweight and mountable router type.
@@ -85,7 +85,7 @@ pub(crate) enum ErrHandler<B> {
 }
 
 impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
-    pub(crate) async fn execute(&self, err: crate::Error, req_info: Option<RequestInfo>) -> Response<B> {
+    pub(crate) async fn execute(&self, err: HandleError, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
             ErrHandler::WithoutInfo(ref err_handler) => Pin::from(err_handler(err)).await,
             ErrHandler::WithInfo(ref err_handler) => {
@@ -123,7 +123,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .chain(self.post_middlewares.iter().map(|m| m.regex.as_str()))
             .chain(self.scoped_data_maps.iter().map(|d| d.regex.as_str()));
 
-        self.regex_set = Some(RegexSet::new(regex_iter).map_err(Error::CreateRouterRegexSet)?);
+        self.regex_set = Some(RegexSet::new(regex_iter)?);
 
         Ok(())
     }
@@ -234,7 +234,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: crate::Error| {
+            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: HandleError| {
                 Box::new(async move {
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -338,7 +338,8 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if resp.is_none() {
-            return Err(Error::HandleNonExistentRoute);
+            let e = "No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.";
+            return Err(crate::Error::new(e).into());
         }
 
         let mut transformed_res = resp.unwrap();

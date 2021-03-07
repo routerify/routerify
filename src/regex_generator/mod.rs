@@ -1,4 +1,3 @@
-use crate::Error;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -38,7 +37,7 @@ fn generate_common_regex_str(path: &str) -> (String, Vec<String>) {
 pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path);
     let re_str = format!("{}{}{}", r"(?s)^", common_regex_str, "$");
-    let re = Regex::new(re_str.as_str()).map_err(|e| Error::GenerateExactMatchRegex(e, path.into()))?;
+    let re = Regex::new(re_str.as_str())?;
     Ok((re, params))
 }
 
@@ -46,7 +45,7 @@ pub(crate) fn generate_exact_match_regex(path: &str) -> crate::Result<(Regex, Ve
 pub(crate) fn generate_prefix_match_regex(path: &str) -> crate::Result<(Regex, Vec<String>)> {
     let (common_regex_str, params) = generate_common_regex_str(path);
     let re_str = format!("{}{}", r"(?s)^", common_regex_str);
-    let re = Regex::new(re_str.as_str()).map_err(|e| Error::GeneratePrefixMatchRegex(e, path.into()))?;
+    let re = Regex::new(re_str.as_str())?;
     Ok((re, params))
 }
 

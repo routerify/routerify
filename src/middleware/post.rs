@@ -1,6 +1,5 @@
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::RequestInfo;
-use crate::Error;
 use hyper::{body::HttpBody, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -140,12 +139,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .expect("A router can not be used after mounting into another router");
 
         match handler {
-            Handler::WithoutInfo(ref handler) => Pin::from(handler(res))
-                .await
-                .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
+            Handler::WithoutInfo(ref handler) => Pin::from(handler(res)).await.map_err(Into::into),
             Handler::WithInfo(ref handler) => Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
                 .await
-                .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into())),
+                .map_err(Into::into),
         }
     }
 }

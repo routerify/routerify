@@ -1,7 +1,6 @@
 use crate::helpers;
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::{RequestMeta, RouteParams};
-use crate::Error;
 use hyper::{body::HttpBody, Method, Request, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -97,9 +96,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .as_ref()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req))
-            .await
-            .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
+        Pin::from(handler(req)).await.map_err(Into::into)
     }
 
     fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {
