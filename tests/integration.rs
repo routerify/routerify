@@ -240,18 +240,10 @@ async fn do_not_execute_scoped_middleware_for_unscoped_path() {
         .build()
         .unwrap();
 
-    const RESPONSE_TEXT: &str = "Something went wrong!";
-    let router: Router<Body, ApiError> = Router::builder()
-        .get("/", |_| async move { Err(ApiError::Generic(RESPONSE_TEXT.into())) })
-        .err_handler(|err: RouteError| async move {
-            let api_err = err.downcast::<ApiError>().unwrap();
-            match api_err.as_ref() {
-                ApiError::Generic(s) => Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::from(s.to_string()))
-                    .unwrap(),
-            }
-        })
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/", |_| async { Ok(Response::new("".into())) })
+        .scope("/api", api_router)
+        .get("/api/login", |_| async { Ok(Response::new("".into())) })
         .build()
         .unwrap();
 
@@ -320,5 +312,53 @@ async fn execute_scoped_middleware_when_no_unscoped_match() {
     assert!(executed_pre.0.load(SeqCst));
     assert!(executed_post.0.load(SeqCst));
 
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_handle_custom_errors() {
+    #[derive(Debug)]
+    enum ApiError {
+        Generic(String),
+    }
+    impl std::error::Error for ApiError {}
+    impl std::fmt::Display for ApiError {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            match self {
+                ApiError::Generic(s) => write!(f, "Generic: {}", s),
+            }
+        }
+    }
+
+    const RESPONSE_TEXT: &str = "Something went wrong!";
+    let router: Router<Body, ApiError> = Router::builder()
+        .get("/", |_| async move { Err(ApiError::Generic(RESPONSE_TEXT.into())) })
+        .err_handler(|err: RouteError| async move {
+            let api_err = err.downcast::<ApiError>().unwrap();
+            match api_err.as_ref() {
+                ApiError::Generic(s) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::from(s.to_string()))
+                    .unwrap(),
+            }
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
     serve.shutdown();
 }

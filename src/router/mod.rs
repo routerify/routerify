@@ -3,6 +3,7 @@ use crate::data_map::ScopedDataMap;
 use crate::middleware::{PostMiddleware, PreMiddleware};
 use crate::route::Route;
 use crate::types::RequestInfo;
+use crate::Error;
 use crate::RouteError;
 use hyper::{
     body::HttpBody,
@@ -123,7 +124,8 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .chain(self.post_middlewares.iter().map(|m| m.regex.as_str()))
             .chain(self.scoped_data_maps.iter().map(|d| d.regex.as_str()));
 
-        self.regex_set = Some(RegexSet::new(regex_iter)?);
+        self.regex_set =
+            Some(RegexSet::new(regex_iter).map_err(|e| Error::new(format!("Couldn't create router RegexSet: {}", e)))?);
 
         Ok(())
     }

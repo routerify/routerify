@@ -1,4 +1,5 @@
 use crate::regex_generator::generate_exact_match_regex;
+use crate::Error;
 use hyper::Request;
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -30,7 +31,12 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
         scope_depth: u32,
     ) -> crate::Result<PreMiddleware<E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())?;
+        let (re, _) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the pre middleware path: {}",
+                e
+            ))
+        })?;
 
         Ok(PreMiddleware {
             path,

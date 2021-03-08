@@ -1,4 +1,5 @@
 use crate::types::RequestMeta;
+use crate::Error;
 use http::Extensions;
 use percent_encoding::percent_decode_str;
 
@@ -13,7 +14,7 @@ pub(crate) fn update_req_meta_in_extensions(ext: &mut Extensions, new_req_meta: 
 pub(crate) fn percent_decode_request_path(val: &str) -> crate::Result<String> {
     percent_decode_str(val)
         .decode_utf8()
-        .map_err(Into::into)
+        .map_err(|e| Error::new(format!("Couldn't decode the request path as UTF8: {}", e)).into())
         .map(|val| val.to_string())
 }
 

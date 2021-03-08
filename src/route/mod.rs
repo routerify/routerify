@@ -1,6 +1,7 @@
 use crate::helpers;
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::{RequestMeta, RouteParams};
+use crate::Error;
 use hyper::{body::HttpBody, Method, Request, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
@@ -62,7 +63,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         scope_depth: u32,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
-        let (re, params) = generate_exact_match_regex(path.as_str())?;
+        let (re, params) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the route path: {}",
+                e
+            ))
+        })?;
 
         Ok(Route {
             path,
