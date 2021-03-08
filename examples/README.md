@@ -14,7 +14,7 @@ Run an example:
 
 * [`error_handling`](error_handling.rs) - Shows how to handle any error in `Routerify`.
 
-* [`error_handling`](error_handling_with_custom_errors.rs) - Shows how to handle any custom errors.
+* [`error_handling_with_custom_errors`](error_handling_with_custom_errors.rs) - Shows how to handle any custom errors.
 
 * [`error_handling_with_request_info`](error_handling_with_request_info.rs) - Shows how to handle any error in `Routerify` based on the request information e.g. headers, method, uri etc.
 
