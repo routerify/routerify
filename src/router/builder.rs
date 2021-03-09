@@ -572,6 +572,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                     .handler
                     .take()
                     .expect("No handler found in one of the pre-middlewares"),
+                pre_middleware.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.pre_middlewares.push(new_pre_middleware?);
@@ -584,6 +585,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 format!("{}{}", path.as_str(), route.path.as_str()),
                 route.methods.clone(),
                 route.handler.take().expect("No handler found in one of the routes"),
+                route.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.routes.push(new_route?);
@@ -598,6 +600,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                     .handler
                     .take()
                     .expect("No handler found in one of the post-middlewares"),
+                post_middleware.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.post_middlewares.push(new_post_middleware?);

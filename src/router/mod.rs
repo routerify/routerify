@@ -279,6 +279,18 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             matched_scoped_data_map_idxs,
         ) = self.match_regex_set(target_path);
 
+        let mut route_scope_depth = None;
+        for idx in &matched_route_idxs {
+            let route = &self.routes[*idx];
+            // Middleware should be executed even if there's no route, e.g.
+            // logging. Before doing the depth check make sure that there's
+            // an actual route match, not a catch-all "/*".
+            if route.is_match_method(req.method()) && route.path != "/*" {
+                route_scope_depth = Some(route.scope_depth);
+                break;
+            }
+        }
+
         let shared_data_maps = matched_scoped_data_map_idxs
             .into_iter()
             .map(|idx| self.scoped_data_maps[idx].clone_data_map())
@@ -296,8 +308,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         let mut transformed_req = req;
         for idx in matched_pre_middleware_idxs {
             let pre_middleware = &self.pre_middlewares[idx];
-
-            transformed_req = pre_middleware.process(transformed_req).await?;
+            // Do not execute middleware with the same prefix but from a deeper scope.
+            if route_scope_depth.is_none() || pre_middleware.scope_depth <= route_scope_depth.unwrap() {
+                transformed_req = pre_middleware.process(transformed_req).await?;
+            }
         }
 
         let mut resp = None;
@@ -330,7 +344,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         let mut transformed_res = resp.unwrap();
         for idx in matched_post_middleware_idxs {
             let post_middleware = &self.post_middlewares[idx];
-            transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
+            // Do not execute middleware with the same prefix but from a deeper scope.
+            if route_scope_depth.is_none() || post_middleware.scope_depth <= route_scope_depth.unwrap() {
+                transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
+            }
         }
 
         Ok(transformed_res)
