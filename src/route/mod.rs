@@ -63,7 +63,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         scope_depth: u32,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
-        let (re, params) = generate_exact_match_regex(path.as_str())?;
+        let (re, params) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the route path: {}",
+                e
+            ))
+        })?;
 
         Ok(Route {
             path,
@@ -97,9 +102,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .as_ref()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req))
-            .await
-            .map_err(|e| Error::HandleRequest(e.into(), target_path.into()))
+        Pin::from(handler(req)).await.map_err(Into::into)
     }
 
     fn push_req_meta(&self, target_path: &str, req: &mut Request<hyper::Body>) {

@@ -1,6 +1,7 @@
 use crate::helpers;
 use crate::router::Router;
 use crate::types::{RequestContext, RequestInfo, RequestMeta};
+use crate::Error;
 use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
@@ -17,7 +18,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     Service<Request<hyper::Body>> for RequestService<B, E>
 {
     type Response = Response<B>;
-    type Error = crate::Error;
+    type Error = crate::RouteError;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -31,7 +32,8 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         let fut = async move {
             helpers::update_req_meta_in_extensions(req.extensions_mut(), RequestMeta::with_remote_addr(remote_addr));
 
-            let mut target_path = helpers::percent_decode_request_path(req.uri().path())?;
+            let mut target_path = helpers::percent_decode_request_path(req.uri().path())
+                .map_err(|e| Error::new(format!("Couldn't percent decode request path: {}", e)))?;
 
             if target_path.is_empty() || target_path.as_bytes()[target_path.len() - 1] != b'/' {
                 target_path.push('/');
@@ -100,7 +102,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 
 #[cfg(test)]
 mod tests {
-    use crate::{Error, RequestServiceBuilder, Router};
+    use crate::{Error, RequestServiceBuilder, RouteError, Router};
     use futures::future::poll_fn;
     use http::Method;
     use hyper::service::Service;
@@ -124,7 +126,7 @@ mod tests {
             .unwrap();
         let mut builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
-        poll_fn(|ctx| -> Poll<Result<(), Error>> { service.poll_ready(ctx) })
+        poll_fn(|ctx| -> Poll<Result<(), RouteError>> { service.poll_ready(ctx) })
             .await
             .expect("request service is not ready");
         let resp: Response<hyper::body::Body> = service.call(req).await.unwrap();

@@ -31,7 +31,12 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
         scope_depth: u32,
     ) -> crate::Result<PreMiddleware<E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())?;
+        let (re, _) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the pre middleware path: {}",
+                e
+            ))
+        })?;
 
         Ok(PreMiddleware {
             path,
@@ -75,9 +80,7 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
             .as_ref()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req))
-            .await
-            .map_err(|e| Error::HandlePreMiddlewareRequest(e.into()))
+        Pin::from(handler(req)).await.map_err(Into::into)
     }
 }
 

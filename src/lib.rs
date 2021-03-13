@@ -70,7 +70,7 @@
 //!
 //! // Define an error handler function which will accept the `routerify::Error`
 //! // and the request information and generates an appropriate response.
-//! async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, _: RequestInfo) -> Response<Body> {
 //!     eprintln!("{}", err);
 //!     Response::builder()
 //!         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -517,7 +517,7 @@
 //!
 //! // Define an error handler function which will accept the `routerify::Error`
 //! // and the request information and generates an appropriate response.
-//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, req_info: RequestInfo) -> Response<Body> {
 //!     // You can also access the same state from error handler.
 //!     let state = req_info.data::<State>().unwrap();
 //!     println!("State value: {}", state.0);
@@ -696,8 +696,14 @@
 //!
 //! ## Error Handling
 //!
-//! Any route or middleware could go wrong and throws an error. `Routerify` tries to add a default error handler in some cases. But, it also
-//! allow to attach a custom error handler. The error handler generates a response based on the error and the request info(optional).
+//! Any route or middleware could go wrong and throw an error. `Routerify` tries to add a default error handler in some cases. But, it also
+//! allows to attach a custom error handler. The error handler generates a response based on the error and the request info (optional).
+//!
+//! Routes and middleware may return any error type. The type must be the same for all routes, middleware and a router instance.
+//! The error is boxed into [`RouteError`](./type.RouteError.html)
+//! and propagated into an error handler. There, the original error is accessible after downcasting.
+//! See this [example](https://github.com/routerify/routerify/tree/master/examples/error_handling_with_custom_errors.rs)
+//! for handling custom errors.
 //!
 //! Here is an basic example:
 //!
@@ -708,7 +714,7 @@
 //!
 //! // The error handler will accept the thrown error in routerify::Error type and
 //! // it will have to generate a response based on the error.
-//! async fn error_handler(err: routerify::Error) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError) -> Response<Body> {
 //!     Response::builder()
 //!       .status(StatusCode::INTERNAL_SERVER_ERROR)
 //!       .body(Body::from("Something went wrong"))
@@ -739,7 +745,7 @@
 //!
 //! // The error handler will accept the thrown error and the request info and
 //! // it will generate a response.
-//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, req_info: RequestInfo) -> Response<Body> {
 //!     // Now generate response based on the `err` and the `req_info`.
 //!     Response::builder()
 //!       .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -759,7 +765,7 @@
 //! # run();
 //! ```
 
-pub use self::error::Error;
+pub use self::error::{Error, RouteError};
 pub use self::middleware::{Middleware, PostMiddleware, PreMiddleware};
 pub use self::route::Route;
 pub use self::router::{Router, RouterBuilder};
@@ -783,4 +789,4 @@ mod service;
 mod types;
 
 /// A Result type often returned from methods that can have routerify errors.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, RouteError>;

@@ -46,7 +46,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         scope_depth: u32,
     ) -> crate::Result<PostMiddleware<B, E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())?;
+        let (re, _) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the post middleware path: {}",
+                e
+            ))
+        })?;
 
         Ok(PostMiddleware {
             path,
@@ -140,12 +145,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             .expect("A router can not be used after mounting into another router");
 
         match handler {
-            Handler::WithoutInfo(ref handler) => Pin::from(handler(res))
-                .await
-                .map_err(|e| Error::HandlePostMiddlewareWithoutInfoRequest(e.into())),
+            Handler::WithoutInfo(ref handler) => Pin::from(handler(res)).await.map_err(Into::into),
             Handler::WithInfo(ref handler) => Pin::from(handler(res, req_info.expect("No RequestInfo is provided")))
                 .await
-                .map_err(|e| Error::HandlePostMiddlewareWithInfoRequest(e.into())),
+                .map_err(Into::into),
         }
     }
 }
