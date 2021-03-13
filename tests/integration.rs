@@ -228,3 +228,87 @@ async fn can_extract_path_params() {
     assert_eq!(resp, RESPONSE_TEXT.to_owned());
     serve.shutdown();
 }
+
+#[tokio::test]
+async fn do_not_execute_scoped_middleware_for_unscoped_path() {
+    let api_router: Router<Body, routerify::Error> = Router::builder()
+        .middleware(Middleware::pre(|_| async { panic!("should not be executed") }))
+        .middleware(Middleware::post(|_| async { panic!("should not be executed") }))
+        .get("/api/todo", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/", |_| async { Ok(Response::new("".into())) })
+        .scope("/api", api_router)
+        .get("/api/login", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/login", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn execute_scoped_middleware_when_no_unscoped_match() {
+    use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+    use std::sync::Arc;
+
+    struct ExecPre(AtomicBool);
+    struct ExecPost(AtomicBool);
+
+    let executed_pre = Arc::new(ExecPre(AtomicBool::new(false)));
+    let executed_post = Arc::new(ExecPost(AtomicBool::new(false)));
+
+    // Record the execution of pre and post middleware.
+    let api_router: Router<Body, routerify::Error> = Router::builder()
+        .middleware(Middleware::pre(|req| async {
+            let pre = req.data::<Arc<ExecPre>>().unwrap();
+            pre.0.store(true, SeqCst);
+            Ok(req)
+        }))
+        .middleware(Middleware::pre(|req| async {
+            let post = req.data::<Arc<ExecPost>>().unwrap();
+            post.0.store(true, SeqCst);
+            Ok(req)
+        }))
+        .get("/api/todo", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .data(executed_pre.clone())
+        .data(executed_post.clone())
+        .get("/", |_| async { Ok(Response::new("".into())) })
+        .scope("/api", api_router)
+        .get("/api/login", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/nomatch", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert!(executed_pre.0.load(SeqCst));
+    assert!(executed_post.0.load(SeqCst));
+
+    serve.shutdown();
+}

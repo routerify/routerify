@@ -51,6 +51,8 @@ pub struct Route<B, E> {
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<B, E>>,
     pub(crate) methods: Vec<Method>,
+    // Scope depth with regards to the top level router.
+    pub(crate) scope_depth: u32,
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
@@ -58,6 +60,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         path: P,
         methods: Vec<Method>,
         handler: Handler<B, E>,
+        scope_depth: u32,
     ) -> crate::Result<Route<B, E>> {
         let path = path.into();
         let (re, params) = generate_exact_match_regex(path.as_str())?;
@@ -68,6 +71,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             route_params: params,
             handler: Some(handler),
             methods,
+            scope_depth,
         })
     }
 
@@ -78,7 +82,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         R: Future<Output = Result<Response<B>, E>> + Send + 'static,
     {
         let handler: Handler<B, E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
-        Route::new_with_boxed_handler(path, methods, handler)
+        Route::new_with_boxed_handler(path, methods, handler, 1)
     }
 
     pub(crate) fn is_match_method(&self, method: &Method) -> bool {
