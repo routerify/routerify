@@ -34,7 +34,7 @@ To generate a quick server app using [Routerify](https://github.com/routerify/ro
 | Framework      | Language    | Requests/sec |
 |----------------|-------------|--------------|
 | [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,583 |
-| [routerify v2.0.0-beta-4](https://github.com/routerify/routerify) with [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,621 |
+| [routerify v2.0.0](https://github.com/routerify/routerify) with [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,621 |
 | [actix-web v3](https://github.com/actix/actix-web) | Rust 1.50.0 | 131,292 |
 | [warp v0.3](https://github.com/seanmonstar/warp) | Rust 1.50.0 | 145,362 |
 | [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.16 | 130,662 |
@@ -48,7 +48,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "2.0.0-beta-4"
+routerify = "2.0.0"
 hyper = "0.14"
 tokio = { version = "1", features = ["full"] }
 ```
