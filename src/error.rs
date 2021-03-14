@@ -1,30 +1,41 @@
-/// The error type used by the `Routerify` library.
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("Couldn't decode the request path as UTF8")]
-    DecodeRequestPath(#[source] std::str::Utf8Error),
+use std::error::Error as StdError;
+use std::fmt::{self, Debug, Display, Formatter};
 
-    #[error("Couldn't create router RegexSet")]
-    CreateRouterRegexSet(#[source] regex::Error),
+/// The error type used by the error handlers.
+pub type RouteError = Box<dyn StdError + Send + Sync + 'static>;
 
-    #[error("Could not create an exact match regex for the route path: {1}")]
-    GenerateExactMatchRegex(#[source] regex::Error, String),
+/// Simple string error for compatibility with Routerify v1.
+/// Can be used in return types of handlers and middleware.
+pub struct Error {
+    msg: String,
+}
 
-    #[error("Could not create an exact match regex for the route path: {1}")]
-    GeneratePrefixMatchRegex(#[source] regex::Error, String),
+impl Error {
+    /// Creates a new error instance with the specified message.
+    pub fn new<M: Into<String>>(msg: M) -> Self {
+        Error { msg: msg.into() }
+    }
 
-    #[error("No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.")]
-    HandleNonExistentRoute,
+    /// Converts other error type to the `routerify::Error` type.
+    pub fn wrap<E: std::error::Error + Send + Sync + 'static>(err: E) -> Self {
+        Error { msg: err.to_string() }
+    }
+}
 
-    #[error("A route was unable to handle the pre middleware request")]
-    HandlePreMiddlewareRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "routerify::Error: {}", self.msg)
+    }
+}
 
-    #[error("A route was unable to handle the request for target: {1}")]
-    HandleRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>, String),
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "routerify::Error: {}", self.msg)
+    }
+}
 
-    #[error("One of the post middlewares (without info) couldn't process the response")]
-    HandlePostMiddlewareWithoutInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[error("One of the post middlewares (with info) couldn't process the response")]
-    HandlePostMiddlewareWithInfoRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        self.msg.as_str()
+    }
 }

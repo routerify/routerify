@@ -1,49 +1,41 @@
-//! The `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper.rs](https://hyper.rs/).
+//! `Routerify` provides a lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library [hyper](https://hyper.rs/).
 //!
-//! There are a lot of web server frameworks for Rust applications out there and [hyper.rs](https://hyper.rs/) being comparably very fast and ready for production use
-//! is one of them, and it provides only low level APIs. It doesn't provide any complex routing feature. So, `Routerify` extends the [hyper.rs](https://hyper.rs/) library
-//! by providing that missing feature without compromising any performance.
+//! Routerify's core features:
 //!
-//! The `Routerify` offers the following features:
+//! - 🌀 Design complex routing using [scopes](https://github.com/routerify/routerify/blob/master/examples/scoped_router.rs) and [middlewares](https://github.com/routerify/routerify/blob/master/examples/middleware.rs)
 //!
-//! - 📡 Allows defining complex routing logic.
+//! - 🚀 Fast route matching using [`RegexSet`](https://docs.rs/regex/1.4.3/regex/struct.RegexSet.html)
 //!
-//! - 🔨 Provides middleware support.
+//! - 🍺 Route handlers may return any [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html)
 //!
-//! - 🌀 Supports Route Parameters.
+//! - ❗ Flexible [error handling](https://github.com/routerify/routerify/blob/master/examples/error_handling_with_request_info.rs) strategy
 //!
-//! - 🚀 Fast as it's using [`RegexSet`](https://docs.rs/regex/1.3.7/regex/struct.RegexSet.html) to match routes.
+//! - 💁 [`WebSocket` support](https://github.com/routerify/routerify-websocket) out of the box.
 //!
-//! - 🍺 It supports any response body type as long as it implements the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait.
+//! - 🔥 Route handlers and middleware [may share state](https://github.com/routerify/routerify/blob/master/examples/share_data_and_state.rs)
 //!
-//! - ❗ Provides a flexible [error handling](./index.html#error-handling) strategy.
+//! - 🍗 [Extensive documentation](https://docs.rs/routerify/) and [examples](https://github.com/routerify/routerify/tree/master/examples)
 //!
-//! - 💁 Provides `WebSocket` [support](https://github.com/routerify/routerify-websocket) out of the box.
-//!
-//! - 🔥 Allows data/state sharing across the route and middleware handlers.
-//!
-//! - 🍗 Exhaustive [examples](https://github.com/routerify/routerify/tree/master/examples) and well documented.
-//!
-//! To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper.rs](https://hyper.rs/),
+//! To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/),
 //! please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
+//!
 //!
 //! ## Benchmarks
 //!
 //! | Framework      | Language    | Requests/sec |
 //! |----------------|-------------|--------------|
-//! | [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,557 |
-//! | [routerify v1.1](https://github.com/routerify/routerify) with [hyper v0.13](https://github.com/hyperium/hyper) | Rust 1.43.0 | 112,320 |
-//! | [gotham v0.4.0](https://github.com/gotham-rs/gotham) | Rust 1.43.0 | 100,097 |
-//! | [actix-web v2](https://github.com/actix/actix-web) | Rust 1.43.0 | 96,397 |
-//! | [warp v0.2](https://github.com/seanmonstar/warp) | Rust 1.43.0 | 81,912 |
-//! | [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.13.7 | 74,958 |
-//! | [Rocket, branch async](https://github.com/SergioBenitez/Rocket) | Rust 1.43.0 | 2,041 ? |
+//! | [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,583 |
+//! | [routerify v2.0.0](https://github.com/routerify/routerify) with [hyper v0.14](https://github.com/hyperium/hyper) | Rust 1.50.0 | 144,621 |
+//! | [actix-web v3](https://github.com/actix/actix-web) | Rust 1.50.0 | 131,292 |
+//! | [warp v0.3](https://github.com/seanmonstar/warp) | Rust 1.50.0 | 145,362 |
+//! | [go-httprouter, branch master](https://github.com/julienschmidt/httprouter) | Go 1.16 | 130,662 |
+//! | [Rocket, branch master](https://github.com/SergioBenitez/Rocket) | Rust 1.50.0 | 130,045 |
 //!
 //! For more info, please visit [Benchmarks](https://github.com/routerify/routerify-benchmark).
 //!
 //! ## Basic Example
 //!
-//! A simple example using `Routerify` with [hyper.rs](https://hyper.rs/) would look like the following:
+//! A simple example using `Routerify` with `hyper` would look like the following:
 //!
 //! ```no_run
 //! use hyper::{Body, Request, Response, Server, StatusCode};
@@ -78,7 +70,7 @@
 //!
 //! // Define an error handler function which will accept the `routerify::Error`
 //! // and the request information and generates an appropriate response.
-//! async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, _: RequestInfo) -> Response<Body> {
 //!     eprintln!("{}", err);
 //!     Response::builder()
 //!         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -479,7 +471,7 @@
 //! # run();
 //! ```
 //!
-//! ### The built-in Middlewars
+//! ### The built-in Middleware
 //!
 //! Here is a list of some middlewares which are published in different crates:
 //!
@@ -488,7 +480,7 @@
 //!
 //! ## Data and State Sharing
 //!
-//! The `Routerify` also allows you to share data or app state across the route handlers, middlewares and the error handler via the [`RouterBuilder`](./struct.RouterBuilder.html) method
+//! `Routerify` also allows you to share data or app state across the route handlers, middlewares and the error handler via the [`RouterBuilder`](./struct.RouterBuilder.html) method
 //! [`data`](./struct.RouterBuilder.html#method.data). As it provides composable router API, it also allows to have app state/data per each sub-router.
 //!
 //! Here is an example to share app state:
@@ -525,7 +517,7 @@
 //!
 //! // Define an error handler function which will accept the `routerify::Error`
 //! // and the request information and generates an appropriate response.
-//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, req_info: RequestInfo) -> Response<Body> {
 //!     // You can also access the same state from error handler.
 //!     let state = req_info.data::<State>().unwrap();
 //!     println!("State value: {}", state.0);
@@ -695,10 +687,23 @@
 //! }
 //! ```
 //!
+//! ### Request context
+//!
+//! It's possible to share data local to the request across the route handlers and middleware via the
+//! [`RequestExt`](./ext/trait.RequestExt.html) methods [`context`](./ext/trait.RequestExt.html#method.context)
+//! and [`set_context`](./ext/trait.RequestExt.html#method.set_context). In the error handler it can be accessed
+//! via [`RequestInfo`](./struct.RequestInfo.html) method [`context`](./struct.RequestInfo.html#method.context).
+//!
 //! ## Error Handling
 //!
-//! Any route or middleware could go wrong and throws an error. The `Routerify` tries to add a default error handler in some cases. But, it also
-//! allow to attach a custom error handler. The error handler generates a response based on the error and the request info(optional).
+//! Any route or middleware could go wrong and throw an error. `Routerify` tries to add a default error handler in some cases. But, it also
+//! allows to attach a custom error handler. The error handler generates a response based on the error and the request info (optional).
+//!
+//! Routes and middleware may return any error type. The type must be the same for all routes, middleware and a router instance.
+//! The error is boxed into [`RouteError`](./type.RouteError.html)
+//! and propagated into an error handler. There, the original error is accessible after downcasting.
+//! See this [example](https://github.com/routerify/routerify/tree/master/examples/error_handling_with_custom_errors.rs)
+//! for handling custom errors.
 //!
 //! Here is an basic example:
 //!
@@ -709,7 +714,7 @@
 //!
 //! // The error handler will accept the thrown error in routerify::Error type and
 //! // it will have to generate a response based on the error.
-//! async fn error_handler(err: routerify::Error) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError) -> Response<Body> {
 //!     Response::builder()
 //!       .status(StatusCode::INTERNAL_SERVER_ERROR)
 //!       .body(Body::from("Something went wrong"))
@@ -730,7 +735,7 @@
 //!
 //! ### Error Handling with Request Info
 //!
-//! Sometimes, it's needed to to generate response on error based on the request headers, method, uri etc. The `Routerify` also provides a method [`err_handler_with_info`](./struct.RouterBuilder.html#method.err_handler_with_info)
+//! Sometimes, it's needed to to generate response on error based on the request headers, method, uri etc. `Routerify` also provides a method [`err_handler_with_info`](./struct.RouterBuilder.html#method.err_handler_with_info)
 //! to register this kind of error handler as follows:
 //!
 //! ```
@@ -740,7 +745,7 @@
 //!
 //! // The error handler will accept the thrown error and the request info and
 //! // it will generate a response.
-//! async fn error_handler(err: routerify::Error, req_info: RequestInfo) -> Response<Body> {
+//! async fn error_handler(err: routerify::RouteError, req_info: RequestInfo) -> Response<Body> {
 //!     // Now generate response based on the `err` and the `req_info`.
 //!     Response::builder()
 //!       .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -760,12 +765,13 @@
 //! # run();
 //! ```
 
-pub use self::error::Error;
+pub use self::error::{Error, RouteError};
 pub use self::middleware::{Middleware, PostMiddleware, PreMiddleware};
 pub use self::route::Route;
 pub use self::router::{Router, RouterBuilder};
 #[doc(hidden)]
 pub use self::service::RequestService;
+pub use self::service::RequestServiceBuilder;
 pub use self::service::RouterService;
 pub use self::types::{RequestInfo, RouteParams};
 
@@ -783,4 +789,4 @@ mod service;
 mod types;
 
 /// A Result type often returned from methods that can have routerify errors.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, RouteError>;

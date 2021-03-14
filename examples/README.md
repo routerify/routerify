@@ -14,6 +14,8 @@ Run an example:
 
 * [`error_handling`](error_handling.rs) - Shows how to handle any error in `Routerify`.
 
+* [`error_handling_with_custom_errors`](error_handling_with_custom_errors.rs) - Shows how to handle any custom errors.
+
 * [`error_handling_with_request_info`](error_handling_with_request_info.rs) - Shows how to handle any error in `Routerify` based on the request information e.g. headers, method, uri etc.
 
 * [`handle_404_pages`](handle_404_pages.rs) - An example on how to handle any non-existent pages.
@@ -26,4 +28,4 @@ Run an example:
 
 * [`scoped_router`](scoped_router.rs) - Shows how to write modular routing logic by mounting a router on another router.
 
-* [`using_stream_body`](using_stream_body.rs) - An example on how to use a different response body type ([StreamBody](https://github.com/rousan/stream-body)) other than `hyper::Body`.
+* [`request_duration`](request_duration.rs) - Shows how to measure the duration of a request using per request context and middleware.

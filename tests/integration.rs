@@ -1,7 +1,7 @@
 use self::support::{into_text, serve};
 use hyper::{Body, Client, Request, Response, StatusCode};
 use routerify::prelude::RequestExt;
-use routerify::{Middleware, RequestInfo, Router};
+use routerify::{Middleware, RequestInfo, RouteError, Router};
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -12,6 +12,7 @@ async fn can_perform_simple_get_request() {
     const RESPONSE_TEXT: &str = "Hello world";
     let router: Router<Body, routerify::Error> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
+        .err_handler(|_: RouteError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -36,6 +37,7 @@ async fn can_perform_simple_get_request_boxed_error() {
     type BoxedError = Box<dyn std::error::Error + Sync + Send + 'static>;
     let router: Router<Body, BoxedError> = Router::builder()
         .get("/", |_| async move { Ok(Response::new(RESPONSE_TEXT.into())) })
+        .err_handler(|_: RouteError| async move { todo!() })
         .build()
         .unwrap();
     let serve = serve(router).await;
@@ -226,5 +228,185 @@ async fn can_extract_path_params() {
         .unwrap();
     let resp = into_text(resp.into_body()).await;
     assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn do_not_execute_scoped_middleware_for_unscoped_path() {
+    let api_router: Router<Body, routerify::Error> = Router::builder()
+        .middleware(Middleware::pre(|_| async { panic!("should not be executed") }))
+        .middleware(Middleware::post(|_| async { panic!("should not be executed") }))
+        .get("/api/todo", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/", |_| async { Ok(Response::new("".into())) })
+        .scope("/api", api_router)
+        .get("/api/login", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/login", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn execute_scoped_middleware_when_no_unscoped_match() {
+    use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+    use std::sync::Arc;
+
+    struct ExecPre(AtomicBool);
+    struct ExecPost(AtomicBool);
+
+    let executed_pre = Arc::new(ExecPre(AtomicBool::new(false)));
+    let executed_post = Arc::new(ExecPost(AtomicBool::new(false)));
+
+    // Record the execution of pre and post middleware.
+    let api_router: Router<Body, routerify::Error> = Router::builder()
+        .middleware(Middleware::pre(|req| async {
+            let pre = req.data::<Arc<ExecPre>>().unwrap();
+            pre.0.store(true, SeqCst);
+            Ok(req)
+        }))
+        .middleware(Middleware::pre(|req| async {
+            let post = req.data::<Arc<ExecPost>>().unwrap();
+            post.0.store(true, SeqCst);
+            Ok(req)
+        }))
+        .get("/api/todo", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .data(executed_pre.clone())
+        .data(executed_post.clone())
+        .get("/", |_| async { Ok(Response::new("".into())) })
+        .scope("/api", api_router)
+        .get("/api/login", |_| async { Ok(Response::new("".into())) })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/nomatch", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert!(executed_pre.0.load(SeqCst));
+    assert!(executed_post.0.load(SeqCst));
+
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_handle_custom_errors() {
+    #[derive(Debug)]
+    enum ApiError {
+        Generic(String),
+    }
+    impl std::error::Error for ApiError {}
+    impl std::fmt::Display for ApiError {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            match self {
+                ApiError::Generic(s) => write!(f, "Generic: {}", s),
+            }
+        }
+    }
+
+    const RESPONSE_TEXT: &str = "Something went wrong!";
+    let router: Router<Body, ApiError> = Router::builder()
+        .get("/", |_| async move { Err(ApiError::Generic(RESPONSE_TEXT.into())) })
+        .err_handler(|err: RouteError| async move {
+            let api_err = err.downcast::<ApiError>().unwrap();
+            match api_err.as_ref() {
+                ApiError::Generic(s) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::from(s.to_string()))
+                    .unwrap(),
+            }
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_handle_pre_middleware_errors() {
+    struct State {}
+    #[derive(Clone)]
+    struct Ctx(i32);
+
+    let state = State {};
+
+    // If pre middleware fails, then `data` and `req.context` should
+    // propagate to the error handler and post middleware. The route
+    // handler should not be executed.
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .data(state)
+        .middleware(Middleware::pre(|req| async move {
+            req.set_context(Ctx(42));
+            Err(routerify::Error::new("Error!"))
+        }))
+        .err_handler_with_info(|err, req_info| async move {
+            let _ctx = req_info.context::<Ctx>().expect("No Ctx");
+            let _state = req_info.data::<State>().expect("No state");
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap()
+        })
+        .middleware(Middleware::post_with_info(|resp, req_info| async move {
+            let _ctx = req_info.context::<Ctx>().expect("No Ctx");
+            let _state = req_info.data::<State>().expect("No state");
+            Ok(resp)
+        }))
+        .get("/", |_| async { panic!("should not be executed") })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     serve.shutdown();
 }

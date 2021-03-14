@@ -20,20 +20,29 @@ pub struct PreMiddleware<E> {
     // Make it an option so that when a router is used to scope in another router,
     // It can be extracted out by 'opt.take()' without taking the whole router's ownership.
     pub(crate) handler: Option<Handler<E>>,
+    // Scope depth with regards to the top level router.
+    pub(crate) scope_depth: u32,
 }
 
 impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<E> {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         handler: Handler<E>,
+        scope_depth: u32,
     ) -> crate::Result<PreMiddleware<E>> {
         let path = path.into();
-        let (re, _) = generate_exact_match_regex(path.as_str())?;
+        let (re, _) = generate_exact_match_regex(path.as_str()).map_err(|e| {
+            Error::new(format!(
+                "Could not create an exact match regex for the pre middleware path: {}",
+                e
+            ))
+        })?;
 
         Ok(PreMiddleware {
             path,
             regex: re,
             handler: Some(handler),
+            scope_depth,
         })
     }
 
@@ -62,7 +71,7 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
         R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
     {
         let handler: Handler<E> = Box::new(move |req: Request<hyper::Body>| Box::new(handler(req)));
-        PreMiddleware::new_with_boxed_handler(path, handler)
+        PreMiddleware::new_with_boxed_handler(path, handler, 1)
     }
 
     pub(crate) async fn process(&self, req: Request<hyper::Body>) -> crate::Result<Request<hyper::Body>> {
@@ -71,9 +80,7 @@ impl<E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> PreMiddleware<
             .as_ref()
             .expect("A router can not be used after mounting into another router");
 
-        Pin::from(handler(req))
-            .await
-            .map_err(|e| Error::HandlePreMiddlewareRequest(e.into()))
+        Pin::from(handler(req)).await.map_err(Into::into)
     }
 }
 

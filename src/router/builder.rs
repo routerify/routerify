@@ -15,7 +15,7 @@ use std::sync::Arc;
 /// This `RouterBuilder<B, E>` type accepts two type parameters: `B` and `E`.
 ///
 /// * The `B` represents the response body type which will be used by route handlers and the middlewares and this body type must implement
-///   the [HttpBody](https://docs.rs/hyper/0.13.5/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.13.5/hyper/body/struct.Body.html)
+///   the [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html) trait. For an instance, `B` could be [hyper::Body](https://docs.rs/hyper/0.14.4/hyper/body/struct.Body.html)
 ///   type.
 /// * The `E` represents any error type which will be used by route handlers and the middlewares. This error type must implement the [std::error::Error](https://doc.rust-lang.org/std/error/trait.Error.html).
 ///
@@ -83,7 +83,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                         .collect::<Vec<crate::Result<ScopedDataMap>>>()
                 })
                 .flatten()
-                .collect::<Result<Vec<ScopedDataMap>, crate::Error>>()?;
+                .collect::<Result<Vec<ScopedDataMap>, crate::RouteError>>()?;
 
             Ok(Router::new(
                 inner.pre_middlewares,
@@ -572,6 +572,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                     .handler
                     .take()
                     .expect("No handler found in one of the pre-middlewares"),
+                pre_middleware.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.pre_middlewares.push(new_pre_middleware?);
@@ -584,6 +585,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 format!("{}{}", path.as_str(), route.path.as_str()),
                 route.methods.clone(),
                 route.handler.take().expect("No handler found in one of the routes"),
+                route.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.routes.push(new_route?);
@@ -598,6 +600,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                     .handler
                     .take()
                     .expect("No handler found in one of the post-middlewares"),
+                post_middleware.scope_depth + 1,
             );
             builder = builder.and_then(move |mut inner| {
                 inner.post_middlewares.push(new_post_middleware?);
@@ -697,10 +700,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     /// for more info.
     pub fn err_handler<H, R>(self, handler: H) -> Self
     where
-        H: Fn(crate::Error) -> R + Send + Sync + 'static,
+        H: Fn(crate::RouteError) -> R + Send + Sync + 'static,
         R: Future<Output = Response<B>> + Send + 'static,
     {
-        let handler: ErrHandlerWithoutInfo<B> = Box::new(move |err: crate::Error| Box::new(handler(err)));
+        let handler: ErrHandlerWithoutInfo<B> = Box::new(move |err: crate::RouteError| Box::new(handler(err)));
 
         self.and_then(move |mut inner| {
             inner.err_handler = Some(ErrHandler::WithoutInfo(handler));
@@ -716,11 +719,11 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     /// for more info.
     pub fn err_handler_with_info<H, R>(self, handler: H) -> Self
     where
-        H: Fn(crate::Error, RequestInfo) -> R + Send + Sync + 'static,
+        H: Fn(crate::RouteError, RequestInfo) -> R + Send + Sync + 'static,
         R: Future<Output = Response<B>> + Send + 'static,
     {
         let handler: ErrHandlerWithInfo<B> =
-            Box::new(move |err: crate::Error, req_info: RequestInfo| Box::new(handler(err, req_info)));
+            Box::new(move |err: crate::RouteError, req_info: RequestInfo| Box::new(handler(err, req_info)));
 
         self.and_then(move |mut inner| {
             inner.err_handler = Some(ErrHandler::WithInfo(handler));
