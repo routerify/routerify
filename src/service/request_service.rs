@@ -52,16 +52,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 
             req.extensions_mut().insert(context);
 
-            match router.process(target_path.as_str(), req, req_info.clone()).await {
-                Ok(resp) => crate::Result::Ok(resp),
-                Err(err) => {
-                    if let Some(ref err_handler) = router.err_handler {
-                        crate::Result::Ok(err_handler.execute(err, req_info.clone()).await)
-                    } else {
-                        crate::Result::Err(err)
-                    }
-                }
-            }
+            router.process(target_path.as_str(), req, req_info.clone()).await
         };
 
         Box::pin(fut)
