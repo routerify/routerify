@@ -1,9 +1,9 @@
 use hyper::{Body, Request, Response, Server};
 // Import the routerify prelude traits.
 use routerify::prelude::*;
-use routerify::{Router, RouterService, Middleware, RequestInfo};
-use std::net::SocketAddr;
+use routerify::{Middleware, RequestInfo, Router, RouterService};
 use std::convert::Infallible;
+use std::net::SocketAddr;
 
 async fn before(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     req.set_context(tokio::time::Instant::now());
