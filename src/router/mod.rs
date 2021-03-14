@@ -307,37 +307,43 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         let ext = req.extensions_mut();
         ext.insert(shared_data_maps);
 
-        let mut transformed_req = req;
-        for idx in matched_pre_middleware_idxs {
-            let pre_middleware = &self.pre_middlewares[idx];
-            // Do not execute middleware with the same prefix but from a deeper scope.
-            if route_scope_depth.is_none() || pre_middleware.scope_depth <= route_scope_depth.unwrap() {
-                transformed_req = pre_middleware.process(transformed_req).await?;
-            }
-        }
+        let res_pre = self
+            .execute_pre_middleware(req, matched_pre_middleware_idxs, route_scope_depth, req_info.clone())
+            .await?;
 
+        // If pre middlewares succeed then execute the route handler.
+        // If a pre middleware fails and is able to generate error response
+        // (because Router.err_handler is set), then skip directly to post
+        // middleware.
         let mut resp = None;
-        for idx in matched_route_idxs {
-            let route = &self.routes[idx];
+        match res_pre {
+            Ok(transformed_req) => {
+                for idx in matched_route_idxs {
+                    let route = &self.routes[idx];
 
-            if route.is_match_method(transformed_req.method()) {
-                let route_resp_res = route.process(target_path, transformed_req).await;
+                    if route.is_match_method(transformed_req.method()) {
+                        let route_resp_res = route.process(target_path, transformed_req).await;
 
-                let route_resp = match route_resp_res {
-                    Ok(route_resp) => route_resp,
-                    Err(err) => {
-                        if let Some(ref err_handler) = self.err_handler {
-                            err_handler.execute(err, req_info.clone()).await
-                        } else {
-                            return Err(err);
-                        }
+                        let route_resp = match route_resp_res {
+                            Ok(route_resp) => route_resp,
+                            Err(err) => {
+                                if let Some(ref err_handler) = self.err_handler {
+                                    err_handler.execute(err, req_info.clone()).await
+                                } else {
+                                    return Err(err);
+                                }
+                            }
+                        };
+
+                        resp = Some(route_resp);
+                        break;
                     }
-                };
-
-                resp = Some(route_resp);
-                break;
+                }
             }
-        }
+            Err(err_response) => {
+                resp = Some(err_response);
+            }
+        };
 
         if resp.is_none() {
             let e = "No handlers added to handle non-existent routes. Tips: Please add an '.any' route at the bottom to handle any routes.";
@@ -349,11 +355,51 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             let post_middleware = &self.post_middlewares[idx];
             // Do not execute middleware with the same prefix but from a deeper scope.
             if route_scope_depth.is_none() || post_middleware.scope_depth <= route_scope_depth.unwrap() {
-                transformed_res = post_middleware.process(transformed_res, req_info.clone()).await?;
+                match post_middleware.process(transformed_res, req_info.clone()).await {
+                    Ok(res_resp) => {
+                        transformed_res = res_resp;
+                    }
+                    Err(err) => {
+                        if let Some(ref err_handler) = self.err_handler {
+                            return Ok(err_handler.execute(err, req_info.clone()).await);
+                        } else {
+                            return Err(err);
+                        }
+                    }
+                }
             }
         }
 
         Ok(transformed_res)
+    }
+
+    async fn execute_pre_middleware(
+        &self,
+        req: Request<hyper::Body>,
+        matched_pre_middleware_idxs: Vec<usize>,
+        route_scope_depth: Option<u32>,
+        req_info: Option<RequestInfo>,
+    ) -> crate::Result<Result<Request<hyper::Body>, Response<B>>> {
+        let mut transformed_req = req;
+        for idx in matched_pre_middleware_idxs {
+            let pre_middleware = &self.pre_middlewares[idx];
+            // Do not execute middleware with the same prefix but from a deeper scope.
+            if route_scope_depth.is_none() || pre_middleware.scope_depth <= route_scope_depth.unwrap() {
+                match pre_middleware.process(transformed_req).await {
+                    Ok(res_req) => {
+                        transformed_req = res_req;
+                    }
+                    Err(err) => {
+                        if let Some(ref err_handler) = self.err_handler {
+                            return Ok(Err(err_handler.execute(err, req_info).await));
+                        } else {
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(Ok(transformed_req))
     }
 
     fn match_regex_set(&self, target_path: &str) -> (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>) {

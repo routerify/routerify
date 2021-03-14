@@ -362,3 +362,51 @@ async fn can_handle_custom_errors() {
     assert_eq!(resp, RESPONSE_TEXT.to_owned());
     serve.shutdown();
 }
+
+#[tokio::test]
+async fn can_handle_pre_middleware_errors() {
+    struct State {}
+    #[derive(Clone)]
+    struct Ctx(i32);
+
+    let state = State {};
+
+    // If pre middleware fails, then `data` and `req.context` should
+    // propagate to the error handler and post middleware. The route
+    // handler should not be executed.
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .data(state)
+        .middleware(Middleware::pre(|req| async move {
+            req.set_context(Ctx(42));
+            Err(routerify::Error::new("Error!"))
+        }))
+        .err_handler_with_info(|err, req_info| async move {
+            let _ctx = req_info.context::<Ctx>().expect("No Ctx");
+            let _state = req_info.data::<State>().expect("No state");
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap()
+        })
+        .middleware(Middleware::post_with_info(|resp, req_info| async move {
+            let _ctx = req_info.context::<Ctx>().expect("No Ctx");
+            let _state = req_info.data::<State>().expect("No state");
+            Ok(resp)
+        }))
+        .get("/", |_| async { panic!("should not be executed") })
+        .build()
+        .unwrap();
+
+    let serve = serve(router).await;
+    let _ = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    serve.shutdown();
+}
