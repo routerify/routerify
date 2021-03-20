@@ -2,8 +2,7 @@ use crate::router::Router;
 use crate::service::request_service::{RequestService, RequestServiceBuilder};
 use hyper::{body::HttpBody, server::conn::AddrStream, service::Service};
 use std::convert::Infallible;
-use std::future::Future;
-use std::pin::Pin;
+use std::future::{ready, Ready};
 use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.14.4/hyper/service/trait.Service.html) to process incoming requests.
@@ -74,7 +73,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    type Future = Ready<Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -83,8 +82,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     fn call(&mut self, conn: &AddrStream) -> Self::Future {
         let req_service = self.builder.build(conn.remote_addr());
 
-        let fut = async move { Ok(req_service) };
-
-        Box::pin(fut)
+        ready(Ok(req_service))
     }
 }
