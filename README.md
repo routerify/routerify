@@ -29,8 +29,6 @@ Routerify's core features:
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
 
-*Compiler support: requires rustc 1.48+*
-
 ## Benchmarks
 
 | Framework      | Language    | Requests/sec |
