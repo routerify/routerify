@@ -92,7 +92,7 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 
 // Define an error handler function which will accept the `routerify::Error`
 // and the request information and generates an appropriate response.
-async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+async fn error_handler(err: routerify::RouteError, _: RequestInfo) -> Response<Body> {
     eprintln!("{}", err);
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
