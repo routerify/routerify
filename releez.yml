@@ -4,7 +4,7 @@ checklist:
     type: auto
     run:
       - git checkout develop
-      - git push
+      - git pull
   - name: Check syntax
     type: auto
     run:

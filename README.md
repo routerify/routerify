@@ -29,6 +29,8 @@ Routerify's core features:
 
 To generate a quick server app using [Routerify](https://github.com/routerify/routerify) and [hyper](https://hyper.rs/), please check out [hyper-routerify-server-template](https://github.com/routerify/hyper-routerify-server-template).
 
+*Compiler support: requires rustc 1.48+*
+
 ## Benchmarks
 
 | Framework      | Language    | Requests/sec |
@@ -48,7 +50,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "2.0.0"
+routerify = "2.0.1"
 hyper = "0.14"
 tokio = { version = "1", features = ["full"] }
 ```
@@ -90,7 +92,7 @@ async fn logger(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 
 // Define an error handler function which will accept the `routerify::Error`
 // and the request information and generates an appropriate response.
-async fn error_handler(err: routerify::Error, _: RequestInfo) -> Response<Body> {
+async fn error_handler(err: routerify::RouteError, _: RequestInfo) -> Response<Body> {
     eprintln!("{}", err);
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
