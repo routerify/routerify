@@ -83,7 +83,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         })
     }
 
-    pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
+    pub fn build(&self, remote_addr: SocketAddr) -> RequestService<B, E> {
         RequestService {
             router: self.router.clone(),
             remote_addr,
