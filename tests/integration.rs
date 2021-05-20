@@ -130,10 +130,14 @@ async fn can_propagate_request_context() {
     use std::io;
     #[derive(Debug, Clone, PartialEq)]
     struct Id(u32);
+    #[derive(Debug, Clone, PartialEq)]
+    struct Id2(u32);
 
     let before = |req: Request<Body>| async move {
         req.set_context(Id(42));
-        Ok(req)
+        let (parts, body) = req.into_parts();
+        parts.set_context(Id2(42));
+        Ok(Request::from_parts(parts, body))
     };
 
     let index = |req: Request<Body>| async move {
@@ -147,6 +151,15 @@ async fn can_propagate_request_context() {
 
         // Add a String value to the context.
         req.set_context("index".to_string());
+
+        let (parts, _) = req.into_parts();
+
+        // Check `id2` from `before()`.
+        let id2 = parts.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(42));
+
+        // Update the Id2 value in the context.
+        parts.set_context(Id2(1));
 
         // Trigger this error in order to invoke
         // the error handler.
@@ -162,6 +175,10 @@ async fn can_propagate_request_context() {
         let name = req_info.context::<String>().unwrap();
         assert_eq!(name, "index");
 
+        // Check updated `id2` from `index()`.
+        let id2 = req_info.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(1));
+
         Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(Body::from("Something went wrong"))
@@ -176,6 +193,10 @@ async fn can_propagate_request_context() {
         // Check String from `index()`.
         let name = req_info.context::<String>().unwrap();
         assert_eq!(name, "index");
+
+        // Check updated `id2` from `index()`.
+        let id2 = req_info.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(1));
 
         Ok(res)
     };
@@ -209,6 +230,11 @@ async fn can_extract_path_params() {
         .get("/api/:first/plus/:second", |req| async move {
             let first = req.param("first").unwrap();
             let second = req.param("second").unwrap();
+            assert_eq!(first, "40");
+            assert_eq!(second, "2");
+            let (parts, _) = req.into_parts();
+            let first = parts.param("first").unwrap();
+            let second = parts.param("second").unwrap();
             assert_eq!(first, "40");
             assert_eq!(second, "2");
             Ok(Response::new(RESPONSE_TEXT.into()))
