@@ -19,6 +19,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 {
     type Response = Response<B>;
     type Error = crate::RouteError;
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -115,7 +116,7 @@ mod tests {
             .uri("/")
             .body(hyper::Body::empty())
             .unwrap();
-        let mut builder = RequestServiceBuilder::new(router).unwrap();
+        let builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
         poll_fn(|ctx| -> Poll<Result<(), RouteError>> { service.poll_ready(ctx) })
             .await
