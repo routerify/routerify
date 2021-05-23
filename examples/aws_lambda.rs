@@ -78,7 +78,7 @@ async fn entrypoint(req: Request, _ctx: Context) -> Result<impl IntoResponse, Ha
         .build()
         .unwrap();
 
-    let mut builder = RequestServiceBuilder::new(router)?;
+    let builder = RequestServiceBuilder::new(router)?;
     let mut service = builder.build(remote_addr);
     if let Err(e) = poll_fn(|ctx| service.poll_ready(ctx)).await {
         panic!("request service is not ready: {:?}", e);

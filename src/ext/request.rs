@@ -3,7 +3,7 @@ use crate::types::{RequestContext, RequestMeta, RouteParams};
 use hyper::Request;
 use std::net::SocketAddr;
 
-/// A extension trait which extends the [`hyper::Request`](https://docs.rs/hyper/0.14.4/hyper/struct.Request.html) type with some helpful methods.
+/// A extension trait which extends the [`hyper::Request`](https://docs.rs/hyper/0.14.4/hyper/struct.Request.html) and [`http::Parts`](https://docs.rs/http/0.2.4/http/request/struct.Parts.html) types with some helpful methods.
 pub trait RequestExt {
     /// It returns the route parameters as [RouteParams](../struct.RouteParams.html) type with the name of the parameter specified in the path as their respective keys.
     ///
@@ -123,53 +123,95 @@ pub trait RequestExt {
     fn set_context<T: Send + Sync + Clone + 'static>(&self, val: T);
 }
 
+fn params(ext: &http::Extensions) -> &RouteParams {
+    ext.get::<RequestMeta>()
+        .and_then(|meta| meta.route_params())
+        .expect("Routerify: No RouteParams added while processing request")
+}
+
+fn param<P: Into<String>>(ext: &http::Extensions, param_name: P) -> Option<&String> {
+    params(ext).get(&param_name.into())
+}
+
+fn remote_addr(ext: &http::Extensions) -> SocketAddr {
+    ext.get::<RequestMeta>()
+        .and_then(|meta| meta.remote_addr())
+        .copied()
+        .expect("Routerify: No remote address added while processing request")
+}
+
+fn data<T: Send + Sync + 'static>(ext: &http::Extensions) -> Option<&T> {
+    let shared_data_maps = ext.get::<Vec<SharedDataMap>>();
+
+    if let Some(shared_data_maps) = shared_data_maps {
+        for shared_data_map in shared_data_maps.iter() {
+            if let Some(data) = shared_data_map.inner.get::<T>() {
+                return Some(data);
+            }
+        }
+    }
+
+    None
+}
+
+fn context<T: Send + Sync + Clone + 'static>(ext: &http::Extensions) -> Option<T> {
+    let ctx = ext.get::<RequestContext>().expect("Context must be present");
+    ctx.get::<T>()
+}
+
+fn set_context<T: Send + Sync + Clone + 'static>(ext: &http::Extensions, val: T) {
+    let ctx = ext.get::<RequestContext>().expect("Context must be present");
+    ctx.set(val)
+}
+
 impl RequestExt for Request<hyper::Body> {
     fn params(&self) -> &RouteParams {
-        self.extensions()
-            .get::<RequestMeta>()
-            .and_then(|meta| meta.route_params())
-            .expect("Routerify: No RouteParams added while processing request")
+        params(self.extensions())
     }
 
     fn param<P: Into<String>>(&self, param_name: P) -> Option<&String> {
-        self.params().get(&param_name.into())
+        param(self.extensions(), param_name)
     }
 
     fn remote_addr(&self) -> SocketAddr {
-        self.extensions()
-            .get::<RequestMeta>()
-            .and_then(|meta| meta.remote_addr())
-            .copied()
-            .expect("Routerify: No remote address added while processing request")
+        remote_addr(self.extensions())
     }
 
     fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        let shared_data_maps = self.extensions().get::<Vec<SharedDataMap>>();
-
-        if let Some(shared_data_maps) = shared_data_maps {
-            for shared_data_map in shared_data_maps.iter() {
-                if let Some(data) = shared_data_map.inner.get::<T>() {
-                    return Some(data);
-                }
-            }
-        }
-
-        None
+        data(self.extensions())
     }
 
     fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {
-        let ctx = self
-            .extensions()
-            .get::<RequestContext>()
-            .expect("Context must be present");
-        ctx.get::<T>()
+        context(self.extensions())
     }
 
     fn set_context<T: Send + Sync + Clone + 'static>(&self, val: T) {
-        let ctx = self
-            .extensions()
-            .get::<RequestContext>()
-            .expect("Context must be present");
-        ctx.set(val)
+        set_context(self.extensions(), val)
+    }
+}
+
+impl RequestExt for http::request::Parts {
+    fn params(&self) -> &RouteParams {
+        params(&self.extensions)
+    }
+
+    fn param<P: Into<String>>(&self, param_name: P) -> Option<&String> {
+        param(&self.extensions, param_name)
+    }
+
+    fn remote_addr(&self) -> SocketAddr {
+        remote_addr(&self.extensions)
+    }
+
+    fn data<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        data(&self.extensions)
+    }
+
+    fn context<T: Send + Sync + Clone + 'static>(&self) -> Option<T> {
+        context(&self.extensions)
+    }
+
+    fn set_context<T: Send + Sync + Clone + 'static>(&self, val: T) {
+        set_context(&self.extensions, val)
     }
 }
