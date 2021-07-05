@@ -60,6 +60,7 @@ struct BuilderInner<B, E> {
     post_middlewares: Vec<PostMiddleware<B, E>>,
     data_maps: HashMap<String, Vec<DataMap>>,
     err_handler: Option<ErrHandler<B>>,
+    expose_x_powered_by: Option<bool>
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
@@ -91,6 +92,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 inner.post_middlewares,
                 scoped_data_maps,
                 inner.err_handler,
+                inner.expose_x_powered_by
             ))
         })
     }
@@ -634,6 +636,37 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 
         builder
     }
+
+    /// Allows you to show/hide the 'x-powered-by' header.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use routerify::Router;
+    /// use hyper::{Response, Request, Body};
+    ///
+    /// async fn home_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    ///     Ok(Response::new(Body::from("home")))
+    /// }
+    ///
+    /// # fn run() -> Router<Body, hyper::Error> {
+    /// let router = Router::builder()
+    ///     .get("/", home_handler)
+    ///     .expose(false)
+    ///     .build()
+    ///     .unwrap();
+    /// # router
+    /// # }
+    /// # run();
+    /// ```
+    ///
+    /// Now the 'x-powered-by' header will not be visible.
+    pub fn expose(self, expose: bool) -> Self {
+        self.and_then(move |mut inner| {
+            inner.expose_x_powered_by = Some(expose);
+            crate::Result::Ok(inner)
+        })
+    }
 }
 
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
@@ -743,6 +776,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
                 post_middlewares: Vec::new(),
                 data_maps: HashMap::new(),
                 err_handler: None,
+                expose_x_powered_by: None
             }),
         }
     }

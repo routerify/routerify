@@ -78,6 +78,10 @@ pub struct Router<B, E> {
 
     // We'll initialize it from the RouterService via Router::init_req_info_gen() method.
     pub(crate) should_gen_req_info: Option<bool>,
+
+    // This field is used to determine if there should be an X-POWERED-BY header or not.
+    // Defaults to true
+    pub(crate) expose_x_powered_by: Option<bool>
 }
 
 pub(crate) enum ErrHandler<B> {
@@ -103,6 +107,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         post_middlewares: Vec<PostMiddleware<B, E>>,
         scoped_data_maps: Vec<ScopedDataMap>,
         err_handler: Option<ErrHandler<B>>,
+        expose_x_powered_by: Option<bool>
     ) -> Self {
         Router {
             pre_middlewares,
@@ -110,8 +115,9 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
             post_middlewares,
             scoped_data_maps,
             err_handler,
+            expose_x_powered_by,
             regex_set: None,
-            should_gen_req_info: None,
+            should_gen_req_info: None
         }
     }
 
@@ -147,6 +153,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     }
 
     pub(crate) fn init_x_powered_by_middleware(&mut self) {
+        if !self.expose_x_powered_by.unwrap_or(true) {
+            return;
+        }
+
         let x_powered_by_post_middleware = PostMiddleware::new("/*", |mut res| async move {
             res.headers_mut().insert(
                 constants::HEADER_NAME_X_POWERED_BY,
