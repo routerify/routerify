@@ -65,6 +65,12 @@ pub struct RequestServiceBuilder<B, E> {
     router: Arc<Router<B, E>>,
 }
 
+impl<B, E> Clone for RequestServiceBuilder<B, E> {
+    fn clone(&self) -> Self {
+        Self { router: self.router.clone() }
+    }
+}
+
 impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
     RequestServiceBuilder<B, E>
 {
