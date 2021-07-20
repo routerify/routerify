@@ -5,11 +5,7 @@ use crate::route::Route;
 use crate::types::RequestInfo;
 use crate::Error;
 use crate::RouteError;
-use hyper::{
-    body::HttpBody,
-    header::{self, HeaderValue},
-    Method, Request, Response, StatusCode,
-};
+use hyper::{body::HttpBody, header, Method, Request, Response, StatusCode};
 use regex::RegexSet;
 use std::any::Any;
 use std::fmt::{self, Debug, Formatter};
@@ -144,19 +140,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         self.should_gen_req_info = Some(false);
-    }
-
-    pub(crate) fn init_x_powered_by_middleware(&mut self) {
-        let x_powered_by_post_middleware = PostMiddleware::new("/*", |mut res| async move {
-            res.headers_mut().insert(
-                constants::HEADER_NAME_X_POWERED_BY,
-                HeaderValue::from_static(constants::HEADER_VALUE_X_POWERED_BY),
-            );
-            Ok(res)
-        })
-        .unwrap();
-
-        self.post_middlewares.insert(0, x_powered_by_post_middleware);
     }
 
     // pub(crate) fn init_keep_alive_middleware(&mut self) {

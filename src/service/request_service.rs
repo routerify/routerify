@@ -69,7 +69,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     RequestServiceBuilder<B, E>
 {
     pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
-        router.init_x_powered_by_middleware();
         // router.init_keep_alive_middleware();
 
         router.init_global_options_route();
