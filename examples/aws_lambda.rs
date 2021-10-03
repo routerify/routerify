@@ -1,18 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::{net::SocketAddr, str::FromStr};
 
-use aws_lambda_events::{
-    encodings::Body,
-    event::apigw::{
-        ApiGatewayProxyRequestContext, ApiGatewayV2httpRequestContext, ApiGatewayV2httpRequestContextHttpDescription,
-    },
-};
 use futures::future::poll_fn;
 use hyper::service::Service;
 use lambda_http::{
-    handler,
-    lambda::{self, Context},
-    request::RequestContext,
+    handler, lambda_runtime::run, request::ApiGatewayV2RequestContext, request::RequestContext, Body, Context,
     IntoResponse, Request, RequestExt, Response,
 };
 use slog::debug;
@@ -29,7 +21,7 @@ const SERVER_ADDR: &str = "127.0.0.1:8080";
 #[tokio::main]
 async fn main() -> Result<(), HandlerError> {
     std::env::set_var("RUST_BACKTRACE", "1");
-    lambda::run(handler(entrypoint)).await?;
+    run(handler(entrypoint)).await?;
     Ok(())
 }
 
@@ -95,13 +87,10 @@ async fn entrypoint(req: Request, _ctx: Context) -> Result<impl IntoResponse, Ha
 fn get_remote_addr(req: &Request) -> SocketAddr {
     const PORT: u16 = 8080;
     let source_ip: String = match req.request_context() {
-        RequestContext::ApiGatewayV1(ApiGatewayProxyRequestContext { identity, .. }) => {
-            identity.source_ip.unwrap_or_else(|| Ipv4Addr::UNSPECIFIED.to_string())
-        }
-        RequestContext::ApiGatewayV2(ApiGatewayV2httpRequestContext {
-            http: ApiGatewayV2httpRequestContextHttpDescription { source_ip, .. },
+        RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
+            http: lambda_http::request::Http { source_ip, .. },
             ..
-        }) => source_ip.unwrap_or_else(|| Ipv4Addr::UNSPECIFIED.to_string()),
+        }) => source_ip,
         _ => Ipv4Addr::UNSPECIFIED.to_string(),
     };
     SocketAddr::new(IpAddr::from_str(source_ip.as_str()).unwrap(), PORT)
@@ -112,11 +101,11 @@ where
     I: Iterator<Item = (&'a str, &'a str)>,
 {
     uri.push('?');
-    let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+    let mut serializer = url::form_urlencoded::Serializer::new(uri);
     for (key, value) in from_query_params.into_iter() {
         serializer.append_pair(key, value);
     }
-    uri.push_str(serializer.finish().as_str())
+    serializer.finish();
 }
 
 #[cfg(test)]
@@ -124,6 +113,7 @@ mod tests {
     use std::collections::HashMap;
 
     use hyper::{Method, StatusCode};
+    use lambda_http::request::Http;
 
     use super::*;
 
@@ -146,28 +136,28 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_200_and_response() {
-        let mut request = lambda_http::Request::new(aws_lambda_events::encodings::Body::Empty);
+        let mut request = lambda_http::Request::new(Body::Empty);
         *request.uri_mut() = "/".parse().unwrap();
         request
             .extensions_mut()
-            .insert::<RequestContext>(RequestContext::ApiGatewayV2(ApiGatewayV2httpRequestContext {
-                route_key: None,
-                account_id: None,
-                stage: None,
-                request_id: None,
-                authorizer: None,
-                apiid: None,
-                domain_name: None,
-                domain_prefix: None,
-                time: None,
+            .insert::<RequestContext>(RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
+                account_id: "".to_string(),
+                api_id: "".to_string(),
+                authorizer: Default::default(),
+                domain_name: "".to_string(),
                 time_epoch: 0,
-                http: ApiGatewayV2httpRequestContextHttpDescription {
+                http: Http {
                     method: Method::GET,
-                    path: None,
-                    protocol: None,
-                    source_ip: Some("127.0.0.1".to_string()),
-                    user_agent: None,
+                    path: "".into(),
+                    protocol: "".into(),
+                    source_ip: "127.0.0.1".to_string(),
+                    user_agent: "".into(),
                 },
+                request_id: "".to_string(),
+                route_key: "".to_string(),
+                stage: "".to_string(),
+                domain_prefix: "".to_string(),
+                time: "".to_string(),
             }));
         let response = entrypoint(request, Context::default()).await.unwrap().into_response();
         assert_eq!(StatusCode::OK, response.status());
