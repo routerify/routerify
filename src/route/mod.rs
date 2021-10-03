@@ -55,7 +55,11 @@ pub struct Route<B, E> {
     pub(crate) scope_depth: u32,
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Route<B, E> {
+impl<B, E> Route<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
+{
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,
         methods: Vec<Method>,
