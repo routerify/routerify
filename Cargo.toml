@@ -18,13 +18,15 @@ all-features = true
 features = ["all"]
 
 [features]
-default = []
+default = ["hyper-http1"]
 all = []
+hyper-http1 = ["hyper/http1"]
+hyper-http2 = ["hyper/http2"]
 
 [dependencies]
-hyper = { version = "0.14", default-features = false, features = ["full"] }
+hyper = { version = "0.14", default-features = false, features = ["server", "tcp"] }
 http = "0.2"
-regex = "1"
+regex = { version = "1", default-features = false, features = ["std"] }
 lazy_static = "1"
 percent-encoding = "2"
 
