@@ -258,6 +258,36 @@ async fn can_extract_path_params() {
 }
 
 #[tokio::test]
+async fn can_extract_extension_path_params() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/api/:id.json", |req| async move {
+            let id = req.param("id").unwrap();
+            assert_eq!(id, "40");
+            let (parts, _) = req.into_parts();
+            let id = parts.param("id").unwrap();
+            assert_eq!(id, "40");
+            Ok(Response::new(RESPONSE_TEXT.into()))
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/40.json", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
 async fn do_not_execute_scoped_middleware_for_unscoped_path() {
     let api_router: Router<Body, routerify::Error> = Router::builder()
         .middleware(Middleware::pre(|_| async { panic!("should not be executed") }))
