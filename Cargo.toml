@@ -1,6 +1,6 @@
 [package]
 name = "routerify"
-version = "2.2.1"
+version = "3.0.0"
 description = "A lightweight, idiomatic, composable and modular router implementation with middleware support for the Rust HTTP library hyper.rs."
 homepage = "https://github.com/routerify/routerify"
 repository = "https://github.com/routerify/routerify"
@@ -19,7 +19,7 @@ features = ["all"]
 
 [features]
 default = ["hyper-http1"]
-all = []
+all = ["hyper-http1", "hyper-http2"]
 hyper-http1 = ["hyper/http1"]
 hyper-http2 = ["hyper/http2"]
 
