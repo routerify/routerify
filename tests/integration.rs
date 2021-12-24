@@ -307,7 +307,7 @@ async fn can_extract_extension_path_params_2() {
         .request(
             Request::builder()
                 .method("GET")
-                .uri(format!("http://api/data.json", serve.addr()))
+                .uri(format!("http://{}/api/data.json", serve.addr()))
                 .body(Body::empty())
                 .unwrap(),
         )
