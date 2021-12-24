@@ -50,7 +50,7 @@ Add this to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-routerify = "2"
+routerify = "3"
 hyper = "0.14"
 tokio = { version = "1", features = ["full"] }
 ```
