@@ -257,8 +257,9 @@ async fn can_extract_path_params() {
     serve.shutdown();
 }
 
+
 #[tokio::test]
-async fn can_extract_extension_path_params() {
+async fn can_extract_extension_path_params_1() {
     const RESPONSE_TEXT: &str = "Hello world";
     let router: Router<Body, routerify::Error> = Router::builder()
         .get("/api/:id.json", |req| async move {
@@ -277,6 +278,36 @@ async fn can_extract_extension_path_params() {
             Request::builder()
                 .method("GET")
                 .uri(format!("http://{}/api/40.json", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_extract_extension_path_params_2() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/api/:fileName", |req| async move {
+            let file_name = req.param("fileName").unwrap();
+            assert_eq!(file_name, "data.json");
+            let (parts, _) = req.into_parts();
+            let file_name = parts.param("fileName").unwrap();
+            assert_eq!(file_name, "data.json");
+            Ok(Response::new(RESPONSE_TEXT.into()))
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://api/data.json", serve.addr()))
                 .body(Body::empty())
                 .unwrap(),
         )
