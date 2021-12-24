@@ -257,7 +257,6 @@ async fn can_extract_path_params() {
     serve.shutdown();
 }
 
-
 #[tokio::test]
 async fn can_extract_extension_path_params_1() {
     const RESPONSE_TEXT: &str = "Hello world";
