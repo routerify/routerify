@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 lazy_static! {
-    static ref PATH_PARAMS_RE: Regex = Regex::new(r"(?s)(?::([^/]+))|(?:\*)").unwrap();
+    static ref PATH_PARAMS_RE: Regex = Regex::new(r"(?s)(?::([^/\.]+))|(?:\*)").unwrap();
 }
 
 fn generate_common_regex_str(path: &str) -> (String, Vec<String>) {
