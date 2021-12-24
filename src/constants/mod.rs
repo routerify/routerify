@@ -1,8 +1,5 @@
 use hyper::Method;
 
-pub(crate) const HEADER_NAME_X_POWERED_BY: &str = "x-powered-by";
-pub(crate) const HEADER_VALUE_X_POWERED_BY: &str = concat!("Routerify v", env!("CARGO_PKG_VERSION"));
-
 pub(crate) const ALL_POSSIBLE_HTTP_METHODS: [Method; 9] = [
     Method::GET,
     Method::POST,

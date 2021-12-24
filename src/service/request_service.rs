@@ -19,6 +19,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 {
     type Response = Response<B>;
     type Error = crate::RouteError;
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -68,7 +69,6 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     RequestServiceBuilder<B, E>
 {
     pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
-        router.init_x_powered_by_middleware();
         // router.init_keep_alive_middleware();
 
         router.init_global_options_route();
@@ -83,7 +83,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         })
     }
 
-    pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
+    pub fn build(&self, remote_addr: SocketAddr) -> RequestService<B, E> {
         RequestService {
             router: self.router.clone(),
             remote_addr,
@@ -115,7 +115,7 @@ mod tests {
             .uri("/")
             .body(hyper::Body::empty())
             .unwrap();
-        let mut builder = RequestServiceBuilder::new(router).unwrap();
+        let builder = RequestServiceBuilder::new(router).unwrap();
         let mut service = builder.build(remote_addr);
         poll_fn(|ctx| -> Poll<Result<(), RouteError>> { service.poll_ready(ctx) })
             .await

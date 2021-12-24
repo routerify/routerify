@@ -130,10 +130,14 @@ async fn can_propagate_request_context() {
     use std::io;
     #[derive(Debug, Clone, PartialEq)]
     struct Id(u32);
+    #[derive(Debug, Clone, PartialEq)]
+    struct Id2(u32);
 
     let before = |req: Request<Body>| async move {
         req.set_context(Id(42));
-        Ok(req)
+        let (parts, body) = req.into_parts();
+        parts.set_context(Id2(42));
+        Ok(Request::from_parts(parts, body))
     };
 
     let index = |req: Request<Body>| async move {
@@ -147,6 +151,15 @@ async fn can_propagate_request_context() {
 
         // Add a String value to the context.
         req.set_context("index".to_string());
+
+        let (parts, _) = req.into_parts();
+
+        // Check `id2` from `before()`.
+        let id2 = parts.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(42));
+
+        // Update the Id2 value in the context.
+        parts.set_context(Id2(1));
 
         // Trigger this error in order to invoke
         // the error handler.
@@ -162,6 +175,10 @@ async fn can_propagate_request_context() {
         let name = req_info.context::<String>().unwrap();
         assert_eq!(name, "index");
 
+        // Check updated `id2` from `index()`.
+        let id2 = req_info.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(1));
+
         Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(Body::from("Something went wrong"))
@@ -176,6 +193,10 @@ async fn can_propagate_request_context() {
         // Check String from `index()`.
         let name = req_info.context::<String>().unwrap();
         assert_eq!(name, "index");
+
+        // Check updated `id2` from `index()`.
+        let id2 = req_info.context::<Id2>().unwrap();
+        assert_eq!(id2, Id2(1));
 
         Ok(res)
     };
@@ -211,6 +232,11 @@ async fn can_extract_path_params() {
             let second = req.param("second").unwrap();
             assert_eq!(first, "40");
             assert_eq!(second, "2");
+            let (parts, _) = req.into_parts();
+            let first = parts.param("first").unwrap();
+            let second = parts.param("second").unwrap();
+            assert_eq!(first, "40");
+            assert_eq!(second, "2");
             Ok(Response::new(RESPONSE_TEXT.into()))
         })
         .build()
@@ -221,6 +247,66 @@ async fn can_extract_path_params() {
             Request::builder()
                 .method("GET")
                 .uri(format!("http://{}/api/40/plus/2", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_extract_extension_path_params_1() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/api/:id.json", |req| async move {
+            let id = req.param("id").unwrap();
+            assert_eq!(id, "40");
+            let (parts, _) = req.into_parts();
+            let id = parts.param("id").unwrap();
+            assert_eq!(id, "40");
+            Ok(Response::new(RESPONSE_TEXT.into()))
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/40.json", serve.addr()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let resp = into_text(resp.into_body()).await;
+    assert_eq!(resp, RESPONSE_TEXT.to_owned());
+    serve.shutdown();
+}
+
+#[tokio::test]
+async fn can_extract_extension_path_params_2() {
+    const RESPONSE_TEXT: &str = "Hello world";
+    let router: Router<Body, routerify::Error> = Router::builder()
+        .get("/api/:fileName", |req| async move {
+            let file_name = req.param("fileName").unwrap();
+            assert_eq!(file_name, "data.json");
+            let (parts, _) = req.into_parts();
+            let file_name = parts.param("fileName").unwrap();
+            assert_eq!(file_name, "data.json");
+            Ok(Response::new(RESPONSE_TEXT.into()))
+        })
+        .build()
+        .unwrap();
+    let serve = serve(router).await;
+    let resp = Client::new()
+        .request(
+            Request::builder()
+                .method("GET")
+                .uri(format!("http://{}/api/data.json", serve.addr()))
                 .body(Body::empty())
                 .unwrap(),
         )

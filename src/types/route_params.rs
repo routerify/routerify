@@ -6,7 +6,7 @@ use std::collections::HashMap;
 ///
 /// **Note:** This type shouldn't be created directly. It will be populated into the `req` object of the route handler and
 /// can be accessed as `req.params()`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RouteParams(HashMap<String, String>);
 
 impl RouteParams {
@@ -89,6 +89,10 @@ impl RouteParams {
     /// Returns the length of the route parameters.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Returns an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) over the parameter names.
