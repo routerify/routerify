@@ -22,6 +22,7 @@ default = ["hyper-http1"]
 all = ["hyper-http1", "hyper-http2"]
 hyper-http1 = ["hyper/http1"]
 hyper-http2 = ["hyper/http2"]
+router-service = ["hyper/tcp"]
 
 [dependencies]
 hyper = { version = "0.14", default-features = false, features = ["server"] }
@@ -40,3 +41,59 @@ lambda_http = { package = "netlify_lambda_http", version = "0.2.0" }
 slog = "2"
 sloggers = "1.0"
 url = "2"
+
+[[example]]
+name = "error_handling_with_custom_errors"
+required-features = ["router-service"]
+
+[[example]]
+name = "error_handling_with_request_info"
+required-features = ["router-service"]
+
+[[example]]
+name = "error_handling"
+required-features = ["router-service"]
+
+[[example]]
+name = "handle_404_pages"
+required-features = ["router-service"]
+
+[[example]]
+name = "middleware"
+required-features = ["router-service"]
+
+[[example]]
+name = "request_duration"
+required-features = ["router-service"]
+
+[[example]]
+name = "route_parameters"
+required-features = ["router-service"]
+
+[[example]]
+name = "scoped_router"
+required-features = ["router-service"]
+
+[[example]]
+name = "share_data_and_state"
+required-features = ["router-service"]
+
+[[example]]
+name = "simple_example"
+required-features = ["router-service"]
+
+[[example]]
+name = "test_with_heavy_loads"
+required-features = ["router-service"]
+
+[[example]]
+name = "test"
+required-features = ["router-service"]
+
+[[example]]
+name = "test2"
+required-features = ["router-service"]
+
+[[test]]
+name = "integration"
+required-features = ["router-service"]
