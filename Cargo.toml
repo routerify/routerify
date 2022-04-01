@@ -83,7 +83,7 @@ name = "simple_example"
 required-features = ["router-service"]
 
 [[example]]
-name = "test_with_heavy_loads"
+name = "test-with-heavy-loads"
 required-features = ["router-service"]
 
 [[example]]
