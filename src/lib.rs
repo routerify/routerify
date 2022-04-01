@@ -772,6 +772,7 @@ pub use self::router::{Router, RouterBuilder};
 #[doc(hidden)]
 pub use self::service::RequestService;
 pub use self::service::RequestServiceBuilder;
+#[cfg(feature = "router-service")]
 pub use self::service::RouterService;
 pub use self::types::{RequestInfo, RouteParams};
 
