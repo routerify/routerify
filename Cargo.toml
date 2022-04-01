@@ -18,7 +18,7 @@ all-features = true
 features = ["all"]
 
 [features]
-default = ["hyper-http1"]
+default = ["hyper-http1", "hyper/tcp"]
 all = ["hyper-http1", "hyper-http2"]
 hyper-http1 = ["hyper/http1"]
 hyper-http2 = ["hyper/http2"]
