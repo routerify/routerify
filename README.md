@@ -19,8 +19,8 @@
 Routerify's core features:
 
 - 🌀 Design complex routing using [scopes](https://github.com/routerify/routerify/blob/master/examples/scoped_router.rs) and [middlewares](https://github.com/routerify/routerify/blob/master/examples/middleware.rs)
-- 🚀 Fast route matching using [`RegexSet`](https://docs.rs/regex/1.4.3/regex/struct.RegexSet.html)
-- 🍺 Route handlers may return any [HttpBody](https://docs.rs/hyper/0.14.4/hyper/body/trait.HttpBody.html)
+- 🚀 Fast route matching using [`RegexSet`](https://docs.rs/regex/latest/regex/struct.RegexSet.html)
+- 🍺 Route handlers may return any [`HttpBody`](https://docs.rs/hyper/latest/hyper/body/trait.HttpBody.html)
 - ❗ Flexible [error handling](https://github.com/routerify/routerify/blob/master/examples/error_handling_with_request_info.rs) strategy
 - 💁 [`WebSocket` support](https://github.com/routerify/routerify-websocket) out of the box.
 - 🔥 Route handlers and middleware [may share state](https://github.com/routerify/routerify/blob/master/examples/share_data_and_state.rs)
