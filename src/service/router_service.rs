@@ -1,8 +1,9 @@
 use crate::router::Router;
 use crate::service::request_service::{RequestService, RequestServiceBuilder};
-use hyper::{body::HttpBody, server::conn::AddrStream, service::Service};
+use hyper::{body::HttpBody, service::Service};
 use std::convert::Infallible;
 use std::future::{ready, Ready};
+use std::net::SocketAddr;
 use std::task::{Context, Poll};
 
 /// A [`Service`](https://docs.rs/hyper/0.14.4/hyper/service/trait.Service.html) to process incoming requests.
@@ -68,8 +69,11 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     }
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
-    Service<&AddrStream> for RouterService<B, E>
+impl<B, E, S> Service<&S> for RouterService<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
+    S: AddrStream,
 {
     type Response = RequestService<B, E>;
     type Error = Infallible;
@@ -79,9 +83,21 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, conn: &AddrStream) -> Self::Future {
+    fn call(&mut self, conn: &S) -> Self::Future {
         let req_service = self.builder.build(conn.remote_addr());
 
         ready(Ok(req_service))
+    }
+}
+
+/// Abstraction over a TcpStream which is able to get the remote address.
+pub trait AddrStream {
+    fn remote_addr(&self) -> SocketAddr;
+}
+
+#[cfg(feature = "hyper-tcp")]
+impl AddrStream for hyper::server::conn::AddrStream {
+    fn remote_addr(&self) -> SocketAddr {
+        self.remote_addr()
     }
 }

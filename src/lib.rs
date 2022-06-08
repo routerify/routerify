@@ -772,7 +772,7 @@ pub use self::router::{Router, RouterBuilder};
 #[doc(hidden)]
 pub use self::service::RequestService;
 pub use self::service::RequestServiceBuilder;
-pub use self::service::RouterService;
+pub use self::service::{RouterService, AddrStream};
 pub use self::types::{RequestInfo, RouteParams};
 
 mod constants;
