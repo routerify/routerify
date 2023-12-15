@@ -5,7 +5,7 @@ use crate::route::Route;
 use crate::types::RequestInfo;
 use crate::Error;
 use crate::RouteError;
-use hyper::{body::HttpBody, header, Method, Request, Response, StatusCode};
+use hyper::{body::Body, header, Method, Request, Response, StatusCode};
 use regex::RegexSet;
 use std::any::Any;
 use std::fmt::{self, Debug, Formatter};
@@ -60,7 +60,7 @@ pub(crate) type ErrHandlerWithInfoReturn<B> = Box<dyn Future<Output = Response<B
 /// # run();
 /// ```
 pub struct Router<B, E> {
-    pub(crate) pre_middlewares: Vec<PreMiddleware<E>>,
+    pub(crate) pre_middlewares: Vec<PreMiddleware<B, E>>,
     pub(crate) routes: Vec<Route<B, E>>,
     pub(crate) post_middlewares: Vec<PostMiddleware<B, E>>,
     pub(crate) scoped_data_maps: Vec<ScopedDataMap>,
@@ -81,7 +81,7 @@ pub(crate) enum ErrHandler<B> {
     WithInfo(ErrHandlerWithInfo<B>),
 }
 
-impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
+impl<B: Body + Send + Sync + 'static> ErrHandler<B> {
     pub(crate) async fn execute(&self, err: RouteError, req_info: Option<RequestInfo>) -> Response<B> {
         match self {
             ErrHandler::WithoutInfo(ref err_handler) => Pin::from(err_handler(err)).await,
@@ -92,9 +92,9 @@ impl<B: HttpBody + Send + Sync + 'static> ErrHandler<B> {
     }
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Router<B, E> {
+impl<B: Body + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static> Router<B, E> {
     pub(crate) fn new(
-        pre_middlewares: Vec<PreMiddleware<E>>,
+        pre_middlewares: Vec<PreMiddleware<B, E>>,
         routes: Vec<Route<B, E>>,
         post_middlewares: Vec<PostMiddleware<B, E>>,
         scoped_data_maps: Vec<ScopedDataMap>,
@@ -165,10 +165,10 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let options_route: Route<hyper::Body, E> = Route::new("/*", options_method, |_req| async move {
+            let options_route: Route<_, E> = Route::new("/*", options_method, |_req| async move {
                 Ok(Response::builder()
                     .status(StatusCode::NO_CONTENT)
-                    .body(hyper::Body::empty())
+                    .body(http_body_util::Empty::new())
                     .expect("Couldn't create the default OPTIONS response"))
             })
             .unwrap();
@@ -193,12 +193,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let default_404_route: Route<hyper::Body, E> =
+            let default_404_route: Route<_, E> =
                 Route::new("/*", constants::ALL_POSSIBLE_HTTP_METHODS.to_vec(), |_req| async move {
                     Ok(Response::builder()
                         .status(StatusCode::NOT_FOUND)
                         .header(header::CONTENT_TYPE, "text/plain")
-                        .body(hyper::Body::from(StatusCode::NOT_FOUND.canonical_reason().unwrap()))
+                        .body(http_body_util::Full::new(StatusCode::NOT_FOUND.canonical_reason().unwrap().into()))
                         .expect("Couldn't create the default 404 response"))
                 })
                 .unwrap();
@@ -219,12 +219,12 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
 
         if let Some(router) = self.downcast_to_hyper_body_type() {
-            let handler: ErrHandler<hyper::Body> = ErrHandler::WithoutInfo(Box::new(move |err: RouteError| {
+            let handler: ErrHandler<_> = ErrHandler::WithoutInfo(Box::new(move |err: RouteError| {
                 Box::new(async move {
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
                         .header(header::CONTENT_TYPE, "text/plain")
-                        .body(hyper::Body::from(format!(
+                        .body(http_body_util::Full::from(format!(
                             "{}: {}",
                             StatusCode::INTERNAL_SERVER_ERROR.canonical_reason().unwrap(),
                             err
@@ -241,9 +241,9 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
         }
     }
 
-    fn downcast_to_hyper_body_type(&mut self) -> Option<&mut Router<hyper::Body, E>> {
+    fn downcast_to_hyper_body_type(&mut self) -> Option<&mut Router<B, E>> {
         let any_obj: &mut dyn Any = self;
-        any_obj.downcast_mut::<Router<hyper::Body, E>>()
+        any_obj.downcast_mut::<Router<B, E>>()
     }
 
     /// Return a [RouterBuilder](./struct.RouterBuilder.html) instance to build a `Router`.
@@ -254,7 +254,7 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     pub(crate) async fn process(
         &self,
         target_path: &str,
-        mut req: Request<hyper::Body>,
+        mut req: Request<B>,
         mut req_info: Option<RequestInfo>,
     ) -> crate::Result<Response<B>> {
         let (
@@ -358,11 +358,11 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
 
     async fn execute_pre_middleware(
         &self,
-        req: Request<hyper::Body>,
+        req: Request<B>,
         matched_pre_middleware_idxs: Vec<usize>,
         route_scope_depth: Option<u32>,
         req_info: Option<RequestInfo>,
-    ) -> crate::Result<Result<Request<hyper::Body>, Response<B>>> {
+    ) -> crate::Result<Result<Request<B>, Response<B>>> {
         let mut transformed_req = req;
         for idx in matched_pre_middleware_idxs {
             let pre_middleware = &self.pre_middlewares[idx];

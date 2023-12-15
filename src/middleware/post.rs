@@ -1,7 +1,7 @@
 use crate::regex_generator::generate_exact_match_regex;
 use crate::types::RequestInfo;
 use crate::Error;
-use hyper::{body::HttpBody, Response};
+use hyper::{body::Body, Response};
 use regex::Regex;
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
@@ -37,7 +37,7 @@ pub(crate) enum Handler<B, E> {
     WithInfo(HandlerWithInfo<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+impl<B: Body + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
     PostMiddleware<B, E>
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(

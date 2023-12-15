@@ -164,7 +164,7 @@ fn set_context<T: Send + Sync + Clone + 'static>(ext: &http::Extensions, val: T)
     ctx.set(val)
 }
 
-impl RequestExt for Request<hyper::Body> {
+impl RequestExt for Request<hyper::body::Incoming> {
     fn params(&self) -> &RouteParams {
         params(self.extensions())
     }

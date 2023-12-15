@@ -1,5 +1,5 @@
 use crate::types::RequestInfo;
-use hyper::{body::HttpBody, Request, Response};
+use hyper::{body::Body, Request, Response};
 use std::future::Future;
 
 pub use self::post::PostMiddleware;
@@ -19,13 +19,13 @@ mod pre;
 #[derive(Debug)]
 pub enum Middleware<B, E> {
     /// Variant for the pre middleware. Refer to [Pre Middleware](./index.html#pre-middleware) for more info.
-    Pre(PreMiddleware<E>),
+    Pre(PreMiddleware<B, E>),
 
     /// Variant for the post middleware. Refer to [Post Middleware](./index.html#post-middleware) for more info.
     Post(PostMiddleware<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
+impl<B: Body + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
     Middleware<B, E>
 {
     /// Creates a pre middleware with a handler at the `/*` path.
@@ -48,8 +48,8 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     /// ```
     pub fn pre<H, R>(handler: H) -> Middleware<B, E>
     where
-        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
+        H: Fn(Request<B>) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Request<B>, E>> + Send + 'static,
     {
         Middleware::pre_with_path("/*", handler).unwrap()
     }
@@ -136,8 +136,8 @@ impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Se
     pub fn pre_with_path<P, H, R>(path: P, handler: H) -> crate::Result<Middleware<B, E>>
     where
         P: Into<String>,
-        H: Fn(Request<hyper::Body>) -> R + Send + Sync + 'static,
-        R: Future<Output = Result<Request<hyper::Body>, E>> + Send + 'static,
+        H: Fn(Request<B>) -> R + Send + Sync + 'static,
+        R: Future<Output = Result<Request<B>, E>> + Send + 'static,
     {
         Ok(Middleware::Pre(PreMiddleware::new(path, handler)?))
     }
