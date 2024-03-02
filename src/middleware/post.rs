@@ -37,8 +37,10 @@ pub(crate) enum Handler<B, E> {
     WithInfo(HandlerWithInfo<B, E>),
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
-    PostMiddleware<B, E>
+impl<B, E> PostMiddleware<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
 {
     pub(crate) fn new_with_boxed_handler<P: Into<String>>(
         path: P,

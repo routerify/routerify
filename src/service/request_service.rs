@@ -1,21 +1,25 @@
-use crate::helpers;
-use crate::router::Router;
-use crate::types::{RequestContext, RequestInfo, RequestMeta};
-use crate::Error;
-use hyper::{body::HttpBody, service::Service, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use hyper::{body::HttpBody, service::Service, Request, Response};
+
+use crate::helpers;
+use crate::router::Router;
+use crate::types::{RequestContext, RequestInfo, RequestMeta};
+use crate::Error;
+
 pub struct RequestService<B, E> {
     pub(crate) router: Arc<Router<B, E>>,
     pub(crate) remote_addr: SocketAddr,
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
-    Service<Request<hyper::Body>> for RequestService<B, E>
+impl<B, E> Service<Request<hyper::Body>> for RequestService<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
 {
     type Response = Response<B>;
     type Error = crate::RouteError;
@@ -65,8 +69,10 @@ pub struct RequestServiceBuilder<B, E> {
     router: Arc<Router<B, E>>,
 }
 
-impl<B: HttpBody + Send + Sync + 'static, E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static>
-    RequestServiceBuilder<B, E>
+impl<B, E> RequestServiceBuilder<B, E>
+where
+    B: HttpBody + Send + Sync + 'static,
+    E: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
 {
     pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
         // router.init_keep_alive_middleware();
